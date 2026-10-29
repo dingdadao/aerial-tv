@@ -169,7 +169,7 @@
 ## 环境
 
 - macOS，JDK 17（`/opt/homebrew/opt/openjdk@17`），Android SDK 在 `~/Library/Android/sdk`，Gradle Wrapper 8.14.3，AGP 8.12，Kotlin 2.2.10。
-- **签名**：`local/signing.keystore` 加 `local/signing.properties`，`app/build.gradle.kts` 会优先使用它。电视上的版本都是用这把钥匙签的（SHA-256 `e08962dc…6685`）。没有它也能编译，但会回落到本机的 debug key，装不上电视（签名不一致）。
+- **签名**：`local/signing.keystore` 加 `local/signing.properties`，`app/build.gradle.kts` 会优先使用它。2026-10-25：原密钥（SHA-256 `e08962dc…6685`）在本机丢失，小米电视已卸载重装为用本机 debug key 签名的 1.47，这把 key 已复制为 `local/signing.keystore`（SHA-256 `896d5936…ee38`，store/key 密码见 `local/signing.properties`）。**之后编译必须保留 `local/signing.*`**：没有它会回落到本机的 debug key 重新生成，签名又对不上电视、无法覆盖安装。
 - **ADB 连电视**需要关闭 Claude Code 的沙箱（局域网访问被拦）。电视第一次连接时要在电视上点「允许 USB 调试」。
 
 ## 日常操作

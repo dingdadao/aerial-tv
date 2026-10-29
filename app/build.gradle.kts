@@ -23,6 +23,9 @@ android {
         val diag = project.hasProperty("diag")
         buildConfigField("boolean", "DIAG", diag.toString())
         if (diag) versionNameSuffix = "-diag"
+        // `./gradlew -Pdev ...`: a second copy beside the one on the TV (app.orchard.tv.dev), for
+        // trying changes out without the release key and without touching the installed app's data.
+        if (project.hasProperty("dev")) applicationIdSuffix = ".dev"
     }
 
     // standard: a normal HOME app. guard: no HOME intent filter at all, for China-market firmwares
