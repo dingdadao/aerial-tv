@@ -9,7 +9,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.edit
 import app.orchard.tv.guard.HomeGuardService
-import app.orchard.tv.settings.AerialSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -28,10 +27,11 @@ import java.util.Locale
  * Child mode, one global budget for every timed app:
  * - each app is Free, Blocked (a child can never open it) or Timed (counts against the budget),
  * - all Timed apps share one daily quota (00:00-24:00) and one set of allowed hours,
- * - a quiz round earns minutes for that budget, and a parent can extend it or waive today.
+ * - a quiz round earns minutes for that budget, and a parent can open one app past it ([Grant]).
  *
- * Home Guard, the only place that sees which app is in front, enforces it, while the parent
- * password is locked: entering it opens everything for a while ([AerialSettings.locked]). The
+ * Home Guard, the only place that sees which app is in front, enforces it. The parent password
+ * opens the settings behind it, not the apps: from the time-up screen a parent opens the one app
+ * the child was stopped in, for that launch, 30 minutes or the rest of the day ([Grant]). The
  * categories and global settings are set on the phone page or in the TV's kids panel; the
  * question set a quiz round uses is set on the phone page.
  */
@@ -43,8 +43,7 @@ object KidsMode {
     private const val KEY_SLOTS = "slots"
     private const val KEY_QUIZ_ENABLED = "quiz_enabled"
     private const val KEY_EARNED = "earned"
-    private const val KEY_EXTENDED = "extended"
-    private const val KEY_EXEMPT = "exempt"
+    private const val KEY_GRANTS = "grants"
     private const val KEY_DAY = "day"
     private const val KEY_QUIZ_TOPICS = "quiz_topics"
     private const val KEY_ASKED = "asked"
@@ -62,9 +61,6 @@ object KidsMode {
 
     /** Daily choices for the whole child mode; 0 is no limit. 5 and 15 are there to try it out. */
     val QUOTA_CHOICES = listOf(0, 5, 15, 30, 60, 90, 120)
-
-    /** Minutes a parent adds from the time-up screen; 1 is there to see the limit take again at once. */
-    val EXTEND_CHOICES = listOf(1, 10, 20, 30)
 
     const val DEFAULT_QUOTA = 60
 
@@ -106,12 +102,28 @@ object KidsMode {
         /** A Timed app outside the allowed hours. */
         OutsideSlot("slot"),
 
-        /** The global daily quota (and extensions and quiz minutes) is used up. */
+        /** The global daily quota (and the minutes quizzes earned) is used up. */
         TimeUp("timeup");
 
         companion object {
             fun of(key: String?) = entries.firstOrNull { it.key == key }
         }
+    }
+
+    /**
+     * What the parent password opens from the time-up screen, for the one app the child was
+     * stopped in and no other: a pass that ends when the child leaves the app, after 30 minutes,
+     * or at midnight.
+     */
+    enum class Grant {
+        /** This launch only: back in Aerial, the password is asked for again. */
+        Once,
+
+        /** Thirty minutes from now. */
+        Thirty,
+
+        /** The rest of today. */
+        Today,
     }
 
     private var started = false
@@ -134,11 +146,11 @@ object KidsMode {
     /** Extra minutes earned today by quizzes, for the global budget. */
     var earned by mutableStateOf(0); private set
 
-    /** Extra minutes a parent granted today (10/20/30). */
-    var extended by mutableStateOf(0); private set
-
-    /** A parent chose "not managed today"; everything opens until midnight. */
-    var exemptToday by mutableStateOf(false); private set
+    /**
+     * Apps a parent opened from the time-up screen, each with the moment its pass ends: [ONCE] for
+     * one that lasts until Aerial is in front again, otherwise wall-clock milliseconds.
+     */
+    private var grants = emptyMap<String, Long>()
 
     /** Questions already asked today; a new round leaves them out, and midnight forgets them. */
     var askedToday by mutableStateOf<Set<String>>(emptySet()); private set
@@ -164,8 +176,12 @@ object KidsMode {
         "com.android.tv",
     )
 
-    /** On, and the password is locked, and the parent did not waive today: what Home Guard enforces. */
-    val restricted: Boolean get() = enabled && AerialSettings.locked && !exemptToday
+    /**
+     * On: what Home Guard enforces. The parent password does not lift this: it opens the settings
+     * behind it, and the one app a parent passes from the time-up screen ([Grant]); every other
+     * app stays shut.
+     */
+    val restricted: Boolean get() = enabled
 
     /** Whether Home shows the quiz tile. */
     val quizTile: Boolean get() = enabled && quizEnabled
@@ -188,15 +204,13 @@ object KidsMode {
         if (day != today()) {
             day = today()
             earned = 0
-            extended = 0
-            exemptToday = false
             askedToday = emptySet()
+            grants = emptyMap()
             persistDay()
         } else {
             earned = prefs.getInt(KEY_EARNED, 0)
-            extended = prefs.getInt(KEY_EXTENDED, 0)
-            exemptToday = prefs.getBoolean(KEY_EXEMPT, false)
             askedToday = prefs.getStringSet(KEY_ASKED, null).orEmpty().toSet()
+            grants = parseGrants(prefs.getString(KEY_GRANTS, null))
         }
         watchUsage()
         migrateV1(prefs)
@@ -286,23 +300,44 @@ object KidsMode {
         persistDay()
     }
 
-    /** A parent grants more minutes today, from [EXTEND_CHOICES]. */
-    fun extend(minutes: Int) {
+    /**
+     * A parent opened [pkg] with the password: for this launch, for 30 minutes, or until
+     * midnight. Only that app is let through; the rest of the child mode still holds.
+     */
+    fun grant(pkg: String, grant: Grant) {
         ensureDay()
-        extended += minutes.coerceAtLeast(0)
-        persistDay()
+        val until = when (grant) {
+            Grant.Once -> ONCE
+            Grant.Thirty -> System.currentTimeMillis() + THIRTY_MS
+            Grant.Today -> startOfDay() + DAY_MS
+        }
+        grants = grants + (pkg to until)
+        persistGrants()
     }
 
-    /** "Today not managed": lifts every restriction until midnight. */
-    fun setExempt(on: Boolean) {
-        ensureDay()
-        if (exemptToday == on) return
-        exemptToday = on
-        persistDay()
+    /**
+     * Aerial is in front again, so a [Grant.Once] pass is used up: the child who opens that app
+     * next is asked for the password again. Called from Home's resume, which is where the child
+     * lands after leaving the app by any route.
+     */
+    fun endLaunchGrants() {
+        val left = grants.filterValues { it != ONCE }
+        if (left.size == grants.size) return
+        grants = left
+        persistGrants()
     }
 
-    /** The whole budget a child may use today: quota plus quiz and extension minutes. */
-    val managedToday: Int get() = dailyQuota + earned + extended
+    /** Whether the parent's pass for [pkg] still holds; a lapsed one is dropped on the way. */
+    private fun granted(pkg: String): Boolean {
+        val until = grants[pkg] ?: return false
+        if (until == ONCE || until > System.currentTimeMillis()) return true
+        grants = grants - pkg
+        persistGrants()
+        return false
+    }
+
+    /** The whole budget a child may use today: quota plus the minutes quizzes earned. */
+    val managedToday: Int get() = dailyQuota + earned
 
     /** Minutes all Timed apps have been in front today; 0 when usage cannot be counted. */
     fun usedToday(context: Context): Int = usageToday(context).values.sum()
@@ -317,6 +352,7 @@ object KidsMode {
     fun blockReason(context: Context, pkg: String): Block? {
         if (!restricted) return null
         if (pkg == context.packageName || pkg in alwaysAllowed) return null
+        if (granted(pkg)) return null
         return when (category(pkg)) {
             Category.Free -> null
             Category.Blocked -> Block.Hard
@@ -342,12 +378,12 @@ object KidsMode {
         if (now == day) return
         day = now
         earned = 0
-        extended = 0
-        exemptToday = false
+        grants = emptyMap()
         // Yesterday's reading must not stand for today's, and neither must yesterday's questions.
         usageAt = 0L
         askedToday = emptySet()
         persistDay()
+        persistGrants()
     }
 
     /** Notes the questions of a round, so the next round leaves them out until midnight. */
@@ -563,15 +599,40 @@ object KidsMode {
     private fun persistDay() {
         app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {
             putInt(KEY_EARNED, earned)
-            putInt(KEY_EXTENDED, extended)
-            putBoolean(KEY_EXEMPT, exemptToday)
             putString(KEY_DAY, day)
             putStringSet(KEY_ASKED, askedToday)
         }
     }
 
+    /**
+     * The passes that outlive the process: the 30-minute and today ones. A [Grant.Once] pass is
+     * held in memory only, so a restart asks for the password again rather than guessing whether
+     * the child left the app.
+     */
+    private fun persistGrants() {
+        val root = JSONObject()
+        grants.forEach { (pkg, until) -> if (until != ONCE) root.put(pkg, until) }
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString(KEY_GRANTS, root.toString()) }
+    }
+
+    private fun parseGrants(raw: String?): Map<String, Long> {
+        if (raw.isNullOrEmpty()) return emptyMap()
+        val root = runCatching { JSONObject(raw) }.getOrNull() ?: return emptyMap()
+        val now = System.currentTimeMillis()
+        return root.keys().asSequence()
+            .mapNotNull { pkg -> root.optLong(pkg, 0L).takeIf { it > now }?.let { pkg to it } }
+            .toMap()
+    }
+
     /** Enough asked ids for many rounds; the set is dropped at midnight anyway. */
     private const val ASKED_LIMIT = 1000
+
+    /** A pass good until Aerial is in front again; every other pass holds a moment instead. */
+    private const val ONCE = 0L
+
+    private const val THIRTY_MS = 30 * 60 * 1000L
+
+    private const val DAY_MS = 24 * 60 * 60 * 1000L
 
     /** Reads the usage events again at most this often; shorter than the guard's poll (see kidsWatch). */
     private const val USAGE_CACHE_MS = 5_000L

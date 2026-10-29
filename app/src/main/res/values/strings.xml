@@ -298,9 +298,9 @@
     <string name="kids_tomorrow_body">Try again after 9:00 tomorrow morning.</string>
     <string name="kids_parent_options">Parent options</string>
     <string name="kids_parent_settings">Open settings</string>
-    <string name="kids_parent_exempt">Not managed today</string>
-    <string name="kids_parent_extend">Add %1$d minutes</string>
-    <string name="kids_extended_notice">Added %1$d minutes</string>
+    <string name="kids_parent_once">This launch only</string>
+    <string name="kids_parent_thirty">For 30 minutes</string>
+    <string name="kids_parent_today">For today</string>
     <string name="kids_status">Left %1$d · used %2$d · total %3$d min</string>
     <string name="kids_status_unlimited">Used %1$d min · no limit</string>
     <string name="kids_status_quota_only">Total %1$d min</string>

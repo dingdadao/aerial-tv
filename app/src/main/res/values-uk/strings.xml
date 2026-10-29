@@ -290,9 +290,9 @@
     <string name="kids_tomorrow_body">Спробуйте завтра після 9:00 ранку.</string>
     <string name="kids_parent_options">Дії батьків</string>
     <string name="kids_parent_settings">Відкрити налаштування</string>
-    <string name="kids_parent_exempt">Не обмежувати сьогодні</string>
-    <string name="kids_parent_extend">Додати %1$d хв</string>
-    <string name="kids_extended_notice">Додано %1$d хв</string>
+    <string name="kids_parent_once">Лише цього разу</string>
+    <string name="kids_parent_thirty">На 30 хвилин</string>
+    <string name="kids_parent_today">На сьогодні</string>
     <string name="kids_status">Залишилось %1$d · використано %2$d · усього %3$d хв</string>
     <string name="kids_status_unlimited">Використано %1$d хв · без ліміту</string>
     <string name="kids_status_quota_only">Усього %1$d хв</string>

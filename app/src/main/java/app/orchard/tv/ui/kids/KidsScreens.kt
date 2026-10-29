@@ -534,13 +534,16 @@ fun KidsTimeUp(
     }
 }
 
-/** What a parent can do after the password on the time-up screen. */
+/**
+ * What a parent can do after the password on the time-up screen. The password lets the TV be
+ * configured, but not the apps: the pass below opens only the app the child was stopped in, and
+ * the child mode holds for every other one.
+ */
 @Composable
 fun ParentOptions(
     visible: Boolean,
     onSettings: () -> Unit,
-    onExempt: () -> Unit,
-    onExtend: (Int) -> Unit,
+    onGrant: (KidsMode.Grant) -> Unit,
     onClose: () -> Unit,
 ) {
     val firstFocus = remember { FocusRequester() }
@@ -551,13 +554,12 @@ fun ParentOptions(
         }
     }
     BackHandler(enabled = visible, onBack = onClose)
-    val rows = buildList {
-        add(Triple(R.string.kids_parent_settings, 0, { onSettings() }))
-        add(Triple(R.string.kids_parent_exempt, 0, { onExempt() }))
-        KidsMode.EXTEND_CHOICES.forEach { minutes ->
-            add(Triple(R.string.kids_parent_extend, minutes, { onExtend(minutes) }))
-        }
-        add(Triple(R.string.kids_close, 0, { onClose() }))
+    val rows = buildList<Pair<Int, () -> Unit>> {
+        add(R.string.kids_parent_settings to { onSettings() })
+        add(R.string.kids_parent_once to { onGrant(KidsMode.Grant.Once) })
+        add(R.string.kids_parent_thirty to { onGrant(KidsMode.Grant.Thirty) })
+        add(R.string.kids_parent_today to { onGrant(KidsMode.Grant.Today) })
+        add(R.string.kids_close to { onClose() })
     }
     Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(visible, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.fillMaxSize()) {
@@ -571,9 +573,9 @@ fun ParentOptions(
             ) {
                 BasicText(stringResource(R.string.kids_parent_options), style = Type.LargeTitle)
                 Spacer(Modifier.height(26.dp))
-                rows.forEachIndexed { i, (label, minutes, onClick) ->
+                rows.forEachIndexed { i, (label, onClick) ->
                     KidChip(
-                        if (minutes > 0) stringResource(label, minutes) else stringResource(label),
+                        stringResource(label),
                         focusRequester = if (i == 0) firstFocus else null,
                         modifier = Modifier.trapColumn(i == 0, i == rows.lastIndex),
                     ) { onClick() }

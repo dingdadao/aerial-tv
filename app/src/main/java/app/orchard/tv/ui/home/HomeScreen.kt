@@ -1093,24 +1093,16 @@ fun HomeScreen(
         ParentOptions(
             visible = overlay is Overlay.ParentOptions,
             onSettings = { timeUpForParent = null; vm.overlay = Overlay.Kids },
-            onExempt = {
-                KidsMode.setExempt(true)
-                timeUpForParent = null
-                vm.overlay = Overlay.None
-            },
-            onExtend = { minutes ->
+            onGrant = { grant ->
                 val blocked = timeUpForParent
-                KidsMode.extend(minutes)
-                // The PIN's free window would otherwise give the child ten minutes whatever is added,
-                // and the added minutes would not be seen running out; the parent has handed the TV
-                // back, so the child mode counts from now.
-                AerialSettings.relock()
-                vm.notify(appContext.getString(R.string.kids_extended_notice, minutes))
                 timeUpForParent = null
                 vm.overlay = Overlay.None
-                // The app was taken away a moment ago: open it again, where the added minutes run.
-                if (blocked?.block == KidsMode.Block.TimeUp) {
+                if (blocked != null) {
+                    // Only this app is opened, and only for as long as the pass says; the child mode
+                    // holds for every other one, and the password session for the panels ends here.
+                    KidsMode.grant(blocked.appKey, grant)
                     vm.entry(blocked.appKey)?.let { onLaunch(it, null) }
+                    AerialSettings.relock()
                 }
             },
             onClose = { timeUpForParent = null; vm.overlay = Overlay.None },

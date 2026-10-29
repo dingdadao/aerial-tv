@@ -393,8 +393,6 @@ class PhoneServer private constructor(private val context: Context, private val 
             .put("slots", JSONArray(KidsMode.slots.map { KidsMode.formatSlot(it) }))
             .put("quizEnabled", KidsMode.quizEnabled)
             .put("earned", KidsMode.earned)
-            .put("extended", KidsMode.extended)
-            .put("exempt", KidsMode.exemptToday)
             .put("usage", JSONObject().apply { usage.forEach { (pkg, minutes) -> put(pkg, minutes) } })
             .put("categories", JSONObject().apply {
                 KidsMode.categories.forEach { (pkg, category) -> put(pkg, category.key) }

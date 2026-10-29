@@ -290,9 +290,9 @@
     <string name="kids_tomorrow_body">Попробуйте завтра после 9:00 утра.</string>
     <string name="kids_parent_options">Действия родителя</string>
     <string name="kids_parent_settings">Открыть настройки</string>
-    <string name="kids_parent_exempt">Не ограничивать сегодня</string>
-    <string name="kids_parent_extend">Добавить %1$d минут</string>
-    <string name="kids_extended_notice">Добавлено %1$d минут</string>
+    <string name="kids_parent_once">Только сейчас</string>
+    <string name="kids_parent_thirty">На 30 минут</string>
+    <string name="kids_parent_today">На сегодня</string>
     <string name="kids_status">Осталось %1$d · использовано %2$d · всего %3$d мин</string>
     <string name="kids_status_unlimited">Использовано %1$d мин · без лимита</string>
     <string name="kids_status_quota_only">Всего %1$d мин</string>

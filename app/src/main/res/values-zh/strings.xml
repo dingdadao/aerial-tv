@@ -297,9 +297,9 @@
     <string name="kids_tomorrow_body">请于明早 9:00 后使用。</string>
     <string name="kids_parent_options">家长选项</string>
     <string name="kids_parent_settings">打开设置</string>
-    <string name="kids_parent_exempt">今日不在管控</string>
-    <string name="kids_parent_extend">延长 %1$d 分钟</string>
-    <string name="kids_extended_notice">已延长 %1$d 分钟</string>
+    <string name="kids_parent_once">仅本次</string>
+    <string name="kids_parent_thirty">30 分钟</string>
+    <string name="kids_parent_today">今日</string>
     <string name="kids_status">还能 %1$d 分 · 已用 %2$d 分 · 管控 %3$d 分</string>
     <string name="kids_status_unlimited">已用 %1$d 分 · 不限</string>
     <string name="kids_status_quota_only">管控 %1$d 分</string>

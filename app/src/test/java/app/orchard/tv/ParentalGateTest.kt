@@ -83,12 +83,15 @@ class ParentalGateTest {
         assertEquals(Overlay.None, vm.overlay)
     }
 
-    /** Why the gate is the whole of the control: the child mode enforces nothing while it is open. */
+    /**
+     * The password opens the settings behind the gate, not the apps: the child mode holds with the
+     * lock open as well, and only a [KidsMode.Grant] lets one app through (see KidsModeGrantsTest).
+     */
     @Test
-    fun theChildModeHoldsOnlyWhileThePasswordIsLocked() {
+    fun thePasswordDoesNotOpenTheChildModeForEverything() {
         assertTrue(KidsMode.enabled)
         assertTrue(KidsMode.restricted)
         assertTrue(AerialSettings.unlock(AerialSettings.DEFAULT_PASSWORD))
-        assertFalse(KidsMode.restricted)
+        assertTrue("the open password session freed every app", KidsMode.restricted)
     }
 }

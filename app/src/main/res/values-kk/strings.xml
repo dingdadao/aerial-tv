@@ -290,9 +290,9 @@
     <string name="kids_tomorrow_body">Ертең таңғы 9:00-ден кейін қайталап көріңіз.</string>
     <string name="kids_parent_options">Ата-ана әрекеттері</string>
     <string name="kids_parent_settings">Реттеулерді ашу</string>
-    <string name="kids_parent_exempt">Бүгін шектемеу</string>
-    <string name="kids_parent_extend">%1$d минут қосу</string>
-    <string name="kids_extended_notice">%1$d минут қосылды</string>
+    <string name="kids_parent_once">Тек осы жолы</string>
+    <string name="kids_parent_thirty">30 минутқа</string>
+    <string name="kids_parent_today">Бүгінге</string>
     <string name="kids_status">Қалды %1$d · пайдаланылды %2$d · барлығы %3$d мин</string>
     <string name="kids_status_unlimited">Пайдаланылды %1$d мин · шектеусіз</string>
     <string name="kids_status_quota_only">Барлығы %1$d мин</string>

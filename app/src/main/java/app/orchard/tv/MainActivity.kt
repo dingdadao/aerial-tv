@@ -776,6 +776,9 @@ class MainActivity : ComponentActivity() {
     /** What onResume does once the user is unlocked; also run by a start that was locked before. */
     private fun resumeWork() {
         vm.resumed = true
+        // A pass a parent gave for one launch ends here: the child left that app and is back in
+        // Aerial, so opening it again asks for the password (see KidsMode.endLaunchGrants).
+        KidsMode.endLaunchGrants()
         idleHandler.removeCallbacks(endHomeBounce)
         vm.homeBounce = false
         DiagLog.i("onResume; screensaver after ${idleBeforeScreensaver() / 1000} s")
