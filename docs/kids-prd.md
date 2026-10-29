@@ -57,14 +57,18 @@
 
 ## 6. 实现清单
 
-- [ ] `AerialSettings`：6 位密码（初始 313074）替换 4 位 PIN；`choosePin` 保留签名（null → 重置默认），移除箭头模式。
-- [ ] `PinPad`：6 位数字键盘（遥控数字键 + 屏幕键盘），Create 模式 = 修改密码（输两次）。
+> 2026-10-29 校订：默认密码是 `123456`（本文早先写的是 `313074`，已作废）；电视上**没有**改密码的入口，
+> `PinPad` 只做解锁，改密码和重设都在手机页面（`/api/parent-password`）。下面各条仍按当初的规划措辞记录，
+> 完成情况以代码为准，不再逐条勾选。
+
+- [ ] `AerialSettings`：6 位密码（初始 `123456`）替换 4 位 PIN；`choosePin` 保留签名（null → 重置默认），移除箭头模式。
+- [ ] `PinPad`：6 位数字键盘（遥控数字键 + 屏幕键盘），只解锁；改密码在手机页面。
 - [ ] `KidsMode` v2：`Category(Free/Blocked/Timed)`、全局 `quota/slots/quizEnabled`、全局 `earned/extended/exempt`、`usageToday` 只计 Timed、`remainingToday`、`blockReason` 增加 `Hard`；v1 数据迁移。
 - [ ] `KidsScreens`：`KidsTimeUp` 三分支；`KidsPanel` 应用分类 + 全局管控时间 + 时段预设 + 做题开关 + 修改密码；新增 `ParentOptions` 菜单；`KidsQuiz` 全局化（去掉选应用）。
 - [ ] `HomeViewModel`：答题磁贴条件改为 `quizEnabled`；`Overlay.ParentOptions`。
 - [ ] `HomeScreen`：儿童模式开启时顶部显示「剩余/已用/管控」；接线新覆盖层。
 - [ ] `PhoneServer` + `assets/web/index.html`：分类、全局额度、做题开关、时段（新模型）。
-- [ ] `ConfigReceiver`：`clear_pin` 改为重置为 313074。
+- [ ] `ConfigReceiver`：`clear_pin` 改为重置为默认密码（`123456`）。
 - [ ] 五语言字符串。
 - [ ] 编译、安装到电视、清理旧测试数据，端到端验证。
 

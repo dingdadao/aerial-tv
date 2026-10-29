@@ -1,7 +1,6 @@
 package app.orchard.tv
 
 import app.orchard.tv.kids.KidsMode
-import app.orchard.tv.ui.home.PinMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -21,7 +20,7 @@ class ParentalSessionTest {
         assertTrue(ParentalSession.holds(Overlay.ParentOptions))
         assertTrue(ParentalSession.holds(Overlay.HiddenApps))
         // The pad itself: a parent typing the password is mid-session, not away from it.
-        assertTrue(ParentalSession.holds(Overlay.Pin(PinMode.Unlock) {}))
+        assertTrue(ParentalSession.holds(Overlay.Pin {}))
     }
 
     @Test

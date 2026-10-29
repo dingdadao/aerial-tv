@@ -36,7 +36,6 @@ import app.orchard.tv.system.SourceKind
 import app.orchard.tv.system.SystemProbe
 import app.orchard.tv.system.TvSource
 import app.orchard.tv.system.VolumeStatus
-import app.orchard.tv.ui.home.PinMode
 import app.orchard.tv.ui.home.ScreensaverSkips
 import app.orchard.tv.ui.home.TileFaces
 import app.orchard.tv.ui.theme.canvasDensity
@@ -69,7 +68,7 @@ sealed interface Overlay {
     data class TimeUp(val appLabel: String?, val appKey: String, val block: KidsMode.Block) : Overlay
     /** What a parent can do after entering the password on the time-up screen. */
     data object ParentOptions : Overlay
-    data class Pin(val mode: PinMode, val onDone: () -> Unit) : Overlay
+    data class Pin(val onDone: () -> Unit) : Overlay
 }
 
 enum class CcPage { Main, Inputs, InputSettings, Update, Setup }
@@ -622,10 +621,10 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         volume = SystemProbe.volume(context)
     }
 
-    /** Runs [action] at once, or after the parental PIN when one is set (issue #10). */
+    /** Runs [action] at once, or after the parent password when it is locked (issue #10). */
     fun whenUnlocked(action: () -> Unit) {
         if (!AerialSettings.locked) action()
-        else overlay = Overlay.Pin(PinMode.Unlock) { overlay = Overlay.None; action() }
+        else overlay = Overlay.Pin { overlay = Overlay.None; action() }
     }
 
     /** How Home names [pkg], or the package name itself for an app Home does not list. */

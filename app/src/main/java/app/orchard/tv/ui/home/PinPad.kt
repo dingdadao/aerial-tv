@@ -57,21 +57,18 @@ import app.orchard.tv.ui.theme.Motion
 import app.orchard.tv.ui.theme.Palette
 import app.orchard.tv.ui.theme.Type
 
-enum class PinMode { Unlock, Create }
-
 private const val PIN_LENGTH = 6
 
 /**
- * The global parent password (6 digits, default 313074): from the remote's number keys or the
- * keypad on screen (most remotes here have no number keys). [PinMode.Create] asks twice and
- * stores it (a parent changing the password from the settings sheet).
+ * The global parent password (6 digits, [AerialSettings.DEFAULT_PASSWORD] until a parent changes
+ * it): from the remote's number keys or the keypad on screen (most remotes here have no number
+ * keys). It only checks the password, and never sets one: setting it is the phone page's job
+ * alone (see PhoneServer), because a pad on the TV that set it is a pad a child could set to
+ * something they know.
  */
 @Composable
-fun PinPad(visible: Boolean, mode: PinMode?, onDone: () -> Unit, onCancel: () -> Unit) {
+fun PinPad(visible: Boolean, onDone: () -> Unit, onCancel: () -> Unit) {
     BackHandler(enabled = visible, onBack = onCancel)
-    // The mode is gone once the overlay changes; keep the last one while the panel fades out.
-    var shown by remember { mutableStateOf(mode) }
-    if (mode != null) shown = mode
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(tween(200, easing = Motion.EaseOut)) + scaleIn(tween(300, easing = Motion.Drawer), initialScale = 0.94f),
@@ -79,14 +76,13 @@ fun PinPad(visible: Boolean, mode: PinMode?, onDone: () -> Unit, onCancel: () ->
         modifier = Modifier.fillMaxSize(),
     ) {
         // Each opening starts empty: the panel leaves composition while hidden.
-        shown?.let { PinPanel(it, onDone, onCancel) }
+        PinPanel(onDone, onCancel)
     }
 }
 
 @Composable
-private fun PinPanel(mode: PinMode, onDone: () -> Unit, onCancel: () -> Unit) {
+private fun PinPanel(onDone: () -> Unit, onCancel: () -> Unit) {
     var entered by remember { mutableStateOf("") }
-    var first by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<Int?>(null) }
     val one = remember { FocusRequester() }
     LaunchedEffect(Unit) {
@@ -95,14 +91,7 @@ private fun PinPanel(mode: PinMode, onDone: () -> Unit, onCancel: () -> Unit) {
     }
 
     fun complete(pin: String) {
-        when (mode) {
-            PinMode.Unlock -> if (AerialSettings.unlock(pin)) onDone() else error = R.string.pin_wrong
-            PinMode.Create -> when (val earlier = first) {
-                null -> { first = pin; error = null }
-                pin -> { AerialSettings.choosePin(pin); onDone() }
-                else -> { first = null; error = R.string.pin_mismatch }
-            }
-        }
+        if (AerialSettings.unlock(pin)) onDone() else error = R.string.pin_wrong
         entered = ""
     }
 
@@ -113,16 +102,6 @@ private fun PinPanel(mode: PinMode, onDone: () -> Unit, onCancel: () -> Unit) {
     }
 
     fun erase() { entered = entered.dropLast(1) }
-
-    val title = when {
-        mode == PinMode.Unlock -> R.string.pin_enter
-        first == null -> R.string.pin_create
-        else -> R.string.pin_confirm
-    }
-    val hint = when {
-        mode == PinMode.Create -> R.string.pin_create_hint
-        else -> R.string.pin_enter_hint
-    }
 
     Box(
         Modifier
@@ -146,10 +125,10 @@ private fun PinPanel(mode: PinMode, onDone: () -> Unit, onCancel: () -> Unit) {
                 .padding(horizontal = 36.dp, vertical = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            BasicText(stringResource(title), style = Type.Title)
+            BasicText(stringResource(R.string.pin_enter), style = Type.Title)
             Spacer(Modifier.height(6.dp))
             BasicText(
-                stringResource(error ?: hint),
+                stringResource(error ?: R.string.pin_enter_hint),
                 style = Type.Caption.copy(color = if (error != null) Palette.Red else Palette.SecondaryLabel, textAlign = TextAlign.Center),
                 modifier = Modifier.widthIn(max = 340.dp),
             )

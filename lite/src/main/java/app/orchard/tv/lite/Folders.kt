@@ -146,17 +146,16 @@ class FolderView(
 
 /**
  * The parental PIN (the full app's PinPad, issue #10): four digits, from the remote's number keys
- * or the keypad on screen, or four arrow keys. [Mode.Create] asks which kind, then asks twice and
- * stores it; [Mode.Unlock] checks it. [done] runs once it is right.
+ * or the keypad on screen, or four arrow keys. It only checks the PIN; setting one is the phone
+ * page's job (see PhoneServer), because a pad on the TV that set it is a pad a child could set to
+ * something they know and then open the settings with.
  */
-class PinPad(context: Context, close: () -> Unit, private val mode: Mode, private val done: () -> Unit) : Sheet(context, close) {
-    enum class Mode { Unlock, Create }
+class PinPad(context: Context, close: () -> Unit, private val done: () -> Unit) : Sheet(context, close) {
 
     private var entered = ""
-    private var first: String? = null
     private var error: Int? = null
-    /** Null while a new PIN's kind is still to be chosen. */
-    private var arrows: Boolean? = if (mode == Mode.Unlock) LiteSettings.pinArrows else null
+    /** The kind it was set as: arrows rather than digits. */
+    private val arrows = LiteSettings.pinArrows
     private val col = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_HORIZONTAL
         setPadding(Ui.pxi(36f), Ui.pxi(28f), Ui.pxi(36f), Ui.pxi(28f))
@@ -174,18 +173,8 @@ class PinPad(context: Context, close: () -> Unit, private val mode: Mode, privat
     private fun build() {
         col.removeAllViews()
         clearRows()
-        val title = when {
-            mode == Mode.Unlock -> R.string.pin_enter
-            first == null -> R.string.pin_create
-            else -> R.string.pin_confirm
-        }
-        val hint = when {
-            arrows == null -> R.string.pin_kind_hint
-            arrows == true -> if (mode == Mode.Create) R.string.pin_arrows_create_hint else R.string.pin_arrows_hint
-            mode == Mode.Create -> R.string.pin_create_hint
-            else -> R.string.pin_enter_hint
-        }
-        col.addView(context.label(context.getString(title), 19f, 600, display = true),
+        val hint = if (arrows) R.string.pin_arrows_hint else R.string.pin_enter_hint
+        col.addView(context.label(context.getString(R.string.pin_enter), 19f, 600, display = true),
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         // Read here: inside the TextView's apply, "error" would be TextView.getError().
         val wrong = error
@@ -193,20 +182,9 @@ class PinPad(context: Context, close: () -> Unit, private val mode: Mode, privat
             setTextColor(if (wrong != null) Ui.RED else Ui.SECONDARY)
             gravity = Gravity.CENTER_HORIZONTAL
         }, LinearLayout.LayoutParams(Ui.pxi(340f), LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = Ui.pxi(6f) })
-        if (arrows == null) {
-            val digits = KeyButton(context, context.getString(R.string.pin_kind_digits), w = 150f).apply { action = { arrows = false; build() } }
-            val arrowKeys = KeyButton(context, context.getString(R.string.pin_kind_arrows), w = 150f).apply { action = { arrows = true; build() } }
-            val line = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
-            line.addView(digits)
-            line.addView(arrowKeys, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { leftMargin = Ui.pxi(12f) })
-            col.addView(line, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = Ui.pxi(22f) })
-            row(digits, arrowKeys)
-            focusFirst()
-            return
-        }
         col.addView(dots, LinearLayout.LayoutParams(Ui.pxi(4 * 14f + 3 * 16f), Ui.pxi(14f)).apply { topMargin = Ui.pxi(18f) })
         dots.invalidate()
-        if (arrows == true) return
+        if (arrows) return
         val grid = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
         for ((ri, keys) in listOf("123", "456", "789", " 0<").withIndex()) {
             val line = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
@@ -228,17 +206,11 @@ class PinPad(context: Context, close: () -> Unit, private val mode: Mode, privat
 
     private fun complete(pin: String) {
         entered = ""
-        when (mode) {
-            Mode.Unlock -> if (LiteSettings.unlock(pin)) { done(); return } else error = R.string.pin_wrong
-            Mode.Create -> when (val earlier = first) {
-                null -> { first = pin; error = null }
-                pin -> { LiteSettings.choosePin(pin, arrows = arrows == true); done(); return }
-                else -> { if (earlier != pin) { first = null; error = R.string.pin_mismatch } }
-            }
-        }
+        if (LiteSettings.unlock(pin)) { done(); return }
+        error = R.string.pin_wrong
         val (r, c) = position
         build()
-        if (arrows == false) focusFirst(r, c)
+        if (!arrows) focusFirst(r, c)
     }
 
     private fun type(ch: Char) {
@@ -252,13 +224,13 @@ class PinPad(context: Context, close: () -> Unit, private val mode: Mode, privat
 
     override fun onKey(e: KeyEvent): Boolean {
         val code = e.keyCode
-        if (arrows == true && code != KeyEvent.KEYCODE_BACK) {
+        if (arrows && code != KeyEvent.KEYCODE_BACK) {
             // Every arrow is an entry, never a move; OK does nothing.
             val symbol = ARROWS[code]
             if (e.action == KeyEvent.ACTION_DOWN && e.repeatCount == 0 && symbol != null) type(symbol)
             return true
         }
-        if (arrows == false && e.action == KeyEvent.ACTION_DOWN) {
+        if (!arrows && e.action == KeyEvent.ACTION_DOWN) {
             if (code in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9) { type('0' + (code - KeyEvent.KEYCODE_0)); return true }
             if (code == KeyEvent.KEYCODE_DEL) { erase(); return true }
         }
@@ -286,9 +258,10 @@ class PinPad(context: Context, close: () -> Unit, private val mode: Mode, privat
         }
     }
 
-    private companion object {
+    companion object {
+        /** How many keys the PIN is: the phone page takes the same length (see PhoneServer). */
         const val LENGTH = 4
-        val ARROWS = mapOf(
+        private val ARROWS = mapOf(
             KeyEvent.KEYCODE_DPAD_UP to 'U',
             KeyEvent.KEYCODE_DPAD_DOWN to 'D',
             KeyEvent.KEYCODE_DPAD_LEFT to 'L',

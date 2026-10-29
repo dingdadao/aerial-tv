@@ -657,11 +657,11 @@ const TEXTS = {
   "密码不对",
   "试了太多次，等一会儿再试",
   "电视家长密码",
-  "电视上进入设置、关掉儿童模式时要输的 6 位数字。只能在这里改，也在这里重设",
-  "6 位数字",
+  "电视上进入设置、关掉儿童模式时要输的数字。只能在这里改，也在这里重设",
+  "新密码",
   "再输一次",
   "保存密码",
-  "两次数要一样，而且都是 6 位数字",
+  "两次数要一样，位数也要对",
   "电视密码已经改好了",
   "网页访问密码",
   "新密码，至少 6 位",
@@ -863,11 +863,11 @@ const TEXTS = {
   "Wrong password",
   "Too many tries — wait a moment",
   "TV parent password",
-  "The six digits the TV asks for before its settings and the child mode. Change and reset it here; nowhere else",
-  "Six digits",
+  "The digits the TV asks for before its settings and the child mode. Change and reset it here; nowhere else",
+  "New password",
   "Again",
   "Save password",
-  "Both must match, and be six digits",
+  "Both must match, and have the right number of digits",
   "The TV password is changed",
   "Page password",
   "New password, six characters or more",
@@ -1069,11 +1069,11 @@ const TEXTS = {
   "Неверный пароль",
   "Слишком много попыток — подождите",
   "Родительский пароль телевизора",
-  "Шесть цифр, которые телевизор спрашивает перед настройками и детским режимом. Сменить и сбросить его можно только здесь",
-  "Шесть цифр",
+  "Цифры, которые телевизор спрашивает перед настройками и детским режимом. Сменить и сбросить его можно только здесь",
+  "Новый пароль",
   "Ещё раз",
   "Сохранить пароль",
-  "Оба должны совпадать и состоять из шести цифр",
+  "Оба должны совпадать и иметь нужное число цифр",
   "Пароль телевизора изменён",
   "Пароль страницы",
   "Новый пароль, не короче шести знаков",
@@ -1275,11 +1275,11 @@ const TEXTS = {
   "Невірний пароль",
   "Забагато спроб — зачекайте",
   "Батьківський пароль телевізора",
-  "Шість цифр, які телевізор запитує перед налаштуваннями та дитячим режимом. Змінити й скинути його можна лише тут",
-  "Шість цифр",
+  "Цифри, які телевізор запитує перед налаштуваннями та дитячим режимом. Змінити й скинути його можна лише тут",
+  "Новий пароль",
   "Ще раз",
   "Зберегти пароль",
-  "Обидва мають збігатися і містити шість цифр",
+  "Обидва мають збігатися і мати потрібну кількість цифр",
   "Пароль телевізора змінено",
   "Пароль сторінки",
   "Новий пароль, щонайменше шість знаків",
@@ -1481,11 +1481,11 @@ const TEXTS = {
   "Құпиясөз дұрыс емес",
   "Тым көп әрекет — күте тұрыңыз",
   "Теледидардың ата-ана құпиясөзі",
-  "Теледидар баптаулар мен балалар режимінің алдында сұрайтын алты цифр. Оны тек осында өзгертуге және қалпына келтіруге болады",
-  "Алты цифр",
+  "Теледидар баптаулар мен балалар режимінің алдында сұрайтын цифрлар. Оны тек осында өзгертуге және қалпына келтіруге болады",
+  "Жаңа құпия сөз",
   "Тағы да",
   "Құпиясөзді сақтау",
-  "Екеуі бірдей және алты цифр болуы керек",
+  "Екеуі бірдей және цифр саны дұрыс болуы керек",
   "Теледидар құпиясөзі өзгертілді",
   "Парақша құпиясөзі",
   "Жаңа құпиясөз, кемінде алты таңба",
@@ -2533,10 +2533,11 @@ $('#gateForm').addEventListener('submit', async e => {
 });
 
 /* The TV's parent password: changed and reset here only, so a child holding the remote cannot set
-   one they know. */
+   one they know. Lite's is four digits where this app's is six, and the TV says which it is. */
 $('#parentSave').addEventListener('click', async () => {
   const password = $('#parentNew').value.trim();
-  if (password !== $('#parentAgain').value.trim() || !/^\d{6}$/.test(password)) { toast(t('parent_bad')); return; }
+  const digits = state && state.lite ? 4 : 6;
+  if (password !== $('#parentAgain').value.trim() || !new RegExp('^\\d{' + digits + '}$').test(password)) { toast(t('parent_bad')); return; }
   try {
     take(await api('api/parent-password', { password }));
     $('#parentNew').value = ''; $('#parentAgain').value = '';

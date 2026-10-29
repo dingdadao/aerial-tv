@@ -366,7 +366,6 @@ class Personalize(
     private val onLayout: () -> Unit,
     private val onHidden: () -> Unit,
     private val onSaverNow: () -> Unit,
-    private val onPin: (Boolean) -> Unit,
 ) : Sheet(context, close) {
     private val col = LinearLayout(context).apply {
         orientation = LinearLayout.VERTICAL
@@ -518,13 +517,8 @@ class Personalize(
         group(string(if (Weather.chosen) R.string.wp_weather_chosen else R.string.wp_weather_guessed)) {
             settingRow(R.string.wp_weather_city, null, emptyList(), value = weatherValue())
         }
-        col.add(space(context, 10f))
-        // The last row: one row says what it is; a title over it would only repeat it.
-        group(string(R.string.st_pin_hint)) {
-            choices(R.string.st_pin, null, listOf(false to R.string.st_pin_off, true to R.string.st_pin_on), LiteSettings.pinSet) { on ->
-                if (LiteSettings.pinSet != on) onPin(on)
-            }
-        }
+        // The parent PIN has no row here any more: it is set on the phone page, whose QR code sits
+        // beside this sheet. A pad on the TV would be one a child could set to something they know.
     }
 
     private fun string(id: Int) = context.getString(id)

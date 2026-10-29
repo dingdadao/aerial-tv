@@ -1119,7 +1119,6 @@ fun HomeScreen(
         val pin = overlay as? Overlay.Pin
         PinPad(
             visible = pin != null,
-            mode = pin?.mode,
             onDone = { pin?.onDone?.invoke() },
             onCancel = { vm.overlay = Overlay.None },
         )

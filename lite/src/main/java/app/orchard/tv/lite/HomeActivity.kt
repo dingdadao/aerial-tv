@@ -451,14 +451,8 @@ class HomeActivity : Activity(), HomeView.Host {
             onLayout = { home.applySettings(); showWeather(); refaceIfResized() },
             onHidden = { whenUnlocked(::openHidden) },
             onSaverNow = { closeAll(); showSaver() },
-            onPin = { on ->
-                if (on) showPanel(PinPad(this, ::closePanel, PinPad.Mode.Create) { closePanel(); refreshPersonalize() }, keepBelow = true)
-                else whenUnlocked { LiteSettings.choosePin(null); refreshPersonalize() }
-            },
         ))
     }
-
-    private fun refreshPersonalize() { (panels.lastOrNull() as? Personalize)?.refreshChips() }
 
     private val bake = Runnable { loadBackdrop() }
 
@@ -474,7 +468,7 @@ class HomeActivity : Activity(), HomeView.Host {
     /** Runs [action] at once, or after the parental PIN when one is set (issue #10). */
     private fun whenUnlocked(action: () -> Unit) {
         if (!LiteSettings.locked) { action(); return }
-        showPanel(PinPad(this, ::closePanel, PinPad.Mode.Unlock) { closePanel(); action() }, keepBelow = true)
+        showPanel(PinPad(this, ::closePanel) { closePanel(); action() }, keepBelow = true)
     }
 
     override fun startSaver() = showSaver()

@@ -4,7 +4,6 @@ import android.app.Application
 import android.content.Context
 import app.orchard.tv.kids.KidsMode
 import app.orchard.tv.settings.AerialSettings
-import app.orchard.tv.ui.home.PinMode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -18,13 +17,12 @@ import org.robolectric.annotation.Config
 
 /**
  * [HomeViewModel.whenUnlocked] is the gate every parental step in Home goes through: the Control
- * Center's Personalize sheet (which holds the child mode's switch and the password itself), the
- * child mode's panel, hidden apps, and the parent's menu on the time-up screen.
+ * Center's Personalize sheet (which holds the child mode's switch), the child mode's panel, hidden
+ * apps, and the parent's menu on the time-up screen.
  *
- * A step that reaches its overlay without it is a way past the password: the sheet would open,
- * the password pad in it would take a new password nobody had to know, and setting one opens the
- * lock for a while (ParentalPasswordTest.settingAPasswordOpensTheLockForAWhile). So: locked means
- * asked first, and nothing runs until the right password comes back.
+ * A step that reaches its overlay without it is a way past the password: the sheet would open, and
+ * with it the child mode's switch. So: locked means asked first, and nothing runs until the right
+ * password comes back.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -54,7 +52,6 @@ class ParentalGateTest {
         assertFalse("the step ran while the password was locked", ran)
         val pin = vm.overlay as? Overlay.Pin
         assertNotNull("no password pad was put up", pin)
-        assertEquals(PinMode.Unlock, pin!!.mode)
     }
 
     @Test

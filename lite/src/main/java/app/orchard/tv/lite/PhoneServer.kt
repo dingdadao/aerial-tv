@@ -90,6 +90,7 @@ class PhoneServer private constructor(private val context: Context, private val 
                     }
                     json(state().put("saved", known))
                 }
+                post && path == "/api/parent-password" -> parentPassword(form(session))
                 post && path == "/api/focus" -> {
                     val style = FocusStyle.of(form(session)["style"])
                     onMain { LiteSettings.chooseFocusStyle(style); ops.settingsChanged() }
@@ -219,6 +220,10 @@ class PhoneServer private constructor(private val context: Context, private val 
                 put("chosen", Weather.chosen)
                 Weather.now?.let { put("celsius", it.celsius); put("kind", it.kind.name.lowercase()); put("day", it.day) }
             })
+            // Lite's own page too: its parent PIN is four digits where the app's is six, and the
+            // page takes the length from here. The PIN is set from the page, nowhere on the TV.
+            .put("lite", true)
+            .put("pinSet", LiteSettings.pinSet)
     }
 
     /** The app's own label, under any name typed here. */
@@ -357,6 +362,19 @@ class PhoneServer private constructor(private val context: Context, private val 
     private fun form(session: IHTTPSession): Map<String, String> {
         session.parseBody(HashMap())
         return session.parameters.mapValues { it.value.firstOrNull().orEmpty() }
+    }
+
+    /**
+     * The parent PIN, changed from the page — the only place it can be changed, so that a child
+     * holding the remote cannot set one they know and open the settings with it. The page is
+     * reached through the token on the QR code, which the remote cannot show them; the sheet on
+     * the TV used to set one and no longer does. [PinPad.LENGTH] digits, as the pad on the TV takes.
+     */
+    private fun parentPassword(f: Map<String, String>): Response {
+        val password = f["password"].orEmpty().trim()
+        if (password.length != PinPad.LENGTH || password.any { !it.isDigit() }) return text(Response.Status.BAD_REQUEST, "bad")
+        onMain { LiteSettings.choosePin(password); ops.settingsChanged() }
+        return json(state())
     }
 
     private fun json(o: JSONObject) = newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8", o.toString())

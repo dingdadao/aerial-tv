@@ -281,11 +281,15 @@ object AerialSettings {
     /**
      * Sets the 6-digit parent password, or with null resets it to the default [DEFAULT_PASSWORD]
      * (a parent who forgot it). [arrows] is kept for callers from the old PIN UI and ignored.
+     *
+     * A change leaves the lock as it found it. It used to open one for [UNLOCK_MS], which was the
+     * last step of the old bypass: a pad that set a password nobody had to know, and a window that
+     * opened with it. Neither caller here wants a window (the phone page relocks at once, the ADB
+     * reset has no session to open), and no pad on the TV sets a password any more.
      */
     fun choosePin(pin: String?, arrows: Boolean = false) {
         pinHash = hash(pin ?: DEFAULT_PASSWORD)
         pinSet = true
-        unlockedUntil = SystemClock.elapsedRealtime() + UNLOCK_MS
         unlockTick++
         app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString("parent_pw_hash", pinHash) }
     }

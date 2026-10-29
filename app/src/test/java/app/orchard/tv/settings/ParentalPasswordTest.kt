@@ -101,18 +101,19 @@ class ParentalPasswordTest {
     }
 
     /**
-     * The last step of the bypass this test came from: setting a password opens the lock for
-     * [AerialSettings]'s window. That is the parent's own doing when they are the one setting it,
-     * and the reason the pad that sets it must not be reachable without the old password
-     * (HomeScreen's onPin, behind whenUnlocked).
+     * A new password leaves the lock alone: it does not open one. It used to open a window, and
+     * that window was the last step of the bypass this whole test class guards — a pad that set a
+     * password nobody had to know, then the ten minutes that came with setting it. No pad on the
+     * TV sets one now, and the two callers left want no window: the phone page relocks at once,
+     * and the ADB reset has no session to open.
      */
     @Test
-    fun settingAPasswordOpensTheLockForAWhile() {
+    fun aNewPasswordLeavesTheLockAsItWas() {
         assertTrue(AerialSettings.locked)
         val before = AerialSettings.unlockTick
         AerialSettings.choosePin("246810")
-        assertFalse(AerialSettings.locked)
-        // Home arranges itself again on every tick: the child mode's rules change with this one.
+        assertTrue(AerialSettings.locked)
+        // Home arranges itself again on every tick: the child mode's rules follow this one.
         assertTrue(AerialSettings.unlockTick > before)
     }
 }
