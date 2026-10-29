@@ -47,6 +47,7 @@ object KidsMode {
     private const val KEY_DAY = "day"
     private const val KEY_QUIZ_TOPICS = "quiz_topics"
     private const val KEY_ASKED = "asked"
+    private const val KEY_SKIPPED = "skipped"
 
     /** The older single-set choice, read once so a TV that already had one keeps a topic. */
     private const val KEY_QUIZ_BANK = "quiz_bank"
@@ -156,6 +157,12 @@ object KidsMode {
     var askedToday by mutableStateOf<Set<String>>(emptySet()); private set
 
     /**
+     * Questions the child said they had not learned. Unlike [askedToday] these outlive midnight:
+     * the point of saying so is to stop being asked until the child has learned it.
+     */
+    var skipped by mutableStateOf<Set<String>>(emptySet()); private set
+
+    /**
      * The topics a round draws from, ticked by the parent on the phone page: a child should not
      * have to pick a level, and could not tell which one suits them.
      */
@@ -201,6 +208,7 @@ object KidsMode {
             ?: QuizBank.of(prefs.getString(KEY_QUIZ_BANK, null))?.let { setOf(it) }
             ?: setOf(QuizBank.KgMath)
         day = prefs.getString(KEY_DAY, null) ?: today()
+        skipped = prefs.getStringSet(KEY_SKIPPED, null).orEmpty().toSet()
         if (day != today()) {
             day = today()
             earned = 0
@@ -395,6 +403,18 @@ object KidsMode {
         if (capped == askedToday) return
         askedToday = capped
         persistDay()
+    }
+
+    /**
+     * Notes a question the child said they had not learned. Midnight does not clear it — that is
+     * the whole point: a question the child cannot answer yet should not come back tomorrow — and
+     * the oldest ids fall out once there are enough of them.
+     */
+    fun skipQuestion(id: String) {
+        if (id.isEmpty() || id in skipped) return
+        val next = skipped + id
+        skipped = if (next.size <= SKIPPED_LIMIT) next else next.toList().takeLast(SKIPPED_LIMIT).toSet()
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putStringSet(KEY_SKIPPED, skipped) }
     }
 
     private fun today(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
@@ -626,6 +646,9 @@ object KidsMode {
 
     /** Enough asked ids for many rounds; the set is dropped at midnight anyway. */
     private const val ASKED_LIMIT = 1000
+
+    /** Enough skipped ids for years of rounds; the oldest fall out rather than grow without end. */
+    private const val SKIPPED_LIMIT = 2000
 
     /** A pass good until Aerial is in front again; every other pass holds a moment instead. */
     private const val ONCE = 0L

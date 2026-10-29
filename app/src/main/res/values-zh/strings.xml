@@ -260,6 +260,7 @@
     <string name="kids_minutes">%1$d 分钟</string>
     <string name="kids_question_progress">第 %1$d / %2$d 题</string>
     <string name="kids_quiz_reward_hint">答对 1 题 = 2 分钟 · 每轮最多 20 分钟</string>
+    <string name="kids_quiz_skip">没学过，换一题</string>
     <string name="kids_done">答对 %1$d 题，获得 %2$d 分钟</string>
     <string name="kids_done_none">这一轮没有答对，下次再试试。</string>
     <string name="kids_close">完成</string>

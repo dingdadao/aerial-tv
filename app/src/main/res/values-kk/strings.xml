@@ -253,6 +253,7 @@
     <string name="kids_minutes">%1$d мин</string>
     <string name="kids_question_progress">%1$d / %2$d сұрақ</string>
     <string name="kids_quiz_reward_hint">1 дұрыс жауап = 2 мин · бір раундта 20 минге дейін</string>
+    <string name="kids_quiz_skip">Өтпегенбіз — басқасы</string>
     <string name="kids_done">Дұрыс %1$d: %2$d мин жиналды</string>
     <string name="kids_done_none">Бұл айналымда дұрыс жауап жоқ; кейінірек қайталап көріңіз.</string>
     <string name="kids_close">Дайын</string>

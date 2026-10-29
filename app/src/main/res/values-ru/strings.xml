@@ -253,6 +253,7 @@
     <string name="kids_minutes">%1$d мин</string>
     <string name="kids_question_progress">Вопрос %1$d из %2$d</string>
     <string name="kids_quiz_reward_hint">1 верный ответ = 2 мин · за раунд до 20 мин</string>
+    <string name="kids_quiz_skip">Не проходили — другое</string>
     <string name="kids_done">Верно %1$d: получено %2$d мин</string>
     <string name="kids_done_none">В этом раунде нет верных ответов; попробуйте позже.</string>
     <string name="kids_close">Готово</string>

@@ -261,6 +261,7 @@
     <string name="kids_minutes">%1$d min</string>
     <string name="kids_question_progress">Question %1$d of %2$d</string>
     <string name="kids_quiz_reward_hint">1 right answer = 2 min · a round pays up to 20 min</string>
+    <string name="kids_quiz_skip">Haven\'t learned it — another one</string>
     <string name="kids_done">%1$d right: %2$d minutes earned</string>
     <string name="kids_done_none">No right answers this round; try again later.</string>
     <string name="kids_close">Done</string>

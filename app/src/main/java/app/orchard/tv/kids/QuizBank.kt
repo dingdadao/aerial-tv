@@ -68,28 +68,35 @@ object QuizBankLoader {
     /**
      * [count] questions drawn from [topics], shuffled, each with its options shuffled too.
      * Questions whose id is in [asked] are left out; when a topic has fewer questions left than a
-     * round needs, those asked before fill the rest rather than leaving the round short.
+     * round needs, those asked before fill the rest rather than leaving the round short. Ones in
+     * [skipped] are never asked at all, not even to fill a round: the child said they had not
+     * learned them.
      */
     fun round(
         context: Context,
         topics: Collection<QuizBank>,
         count: Int,
         asked: Set<String> = emptySet(),
+        skipped: Set<String> = emptySet(),
     ): List<Question> {
         val banks = topics.distinct().ifEmpty { listOf(QuizBank.KgMath) }
         val fresh = ArrayList<Question>(count * 4)
         val repeats = ArrayList<Question>()
+        val banned = asked + skipped
         for (bank in banks) {
             val made = when (bank) {
                 // A kindergarten child adds and subtracts within 20; a primary one within 100.
                 QuizBank.KgMath -> mathQuestions(20, count * 4, "kg_math")
                 QuizBank.PrimaryMath -> mathQuestions(100, count * 4, "primary_math")
-                QuizBank.KgPoem -> poemQuestions(context, setOf(5), count * 4, asked)
-                QuizBank.PrimaryPoem -> poemQuestions(context, setOf(5, 7), count * 4, asked)
+                QuizBank.KgPoem -> poemQuestions(context, setOf(5), count * 4, banned)
+                QuizBank.PrimaryPoem -> poemQuestions(context, setOf(5, 7), count * 4, banned)
                 QuizBank.KgFruit, QuizBank.PrimaryFruit -> fruitQuestions()
                 else -> all(context)[bank].orEmpty()
             }
-            for (q in made) (if (q.id in asked) repeats else fresh).add(q)
+            for (q in made) {
+                if (q.id in skipped) continue
+                (if (q.id in asked) repeats else fresh).add(q)
+            }
         }
         val out = ArrayList<Question>(count)
         val used = HashSet<String>()

@@ -253,6 +253,7 @@
     <string name="kids_minutes">%1$d хв</string>
     <string name="kids_question_progress">Запитання %1$d з %2$d</string>
     <string name="kids_quiz_reward_hint">1 правильна відповідь = 2 хв · за раунд до 20 хв</string>
+    <string name="kids_quiz_skip">Не проходили — інше</string>
     <string name="kids_done">Правильно %1$d: отримано %2$d хв</string>
     <string name="kids_done_none">У цьому раунді немає правильних відповідей; спробуйте пізніше.</string>
     <string name="kids_close">Готово</string>

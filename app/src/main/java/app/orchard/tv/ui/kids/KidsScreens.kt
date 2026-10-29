@@ -219,6 +219,7 @@ fun KidsQuiz(visible: Boolean, onClose: () -> Unit) {
                 KidsMode.quizTopics,
                 KidsMode.QUESTIONS_PER_ROUND,
                 KidsMode.askedToday,
+                KidsMode.skipped,
             )
             KidsMode.markAsked(questions.map { it.id })
             index = 0; chosen = null; correct = 0; done = false; awarded = 0
@@ -271,6 +272,25 @@ fun KidsQuiz(visible: Boolean, onClose: () -> Unit) {
                     }
                     else -> {
                         val q = questions.getOrNull(index) ?: return@Column
+                        // "没学过": the question is dropped for good and a fresh one takes its
+                        // place, so the round keeps its length instead of getting shorter.
+                        val skip = {
+                            if (chosen == null) {
+                                KidsMode.skipQuestion(q.id)
+                                val used = questions.map { it.id }.toSet()
+                                val fresh = QuizBankLoader.round(
+                                    context, KidsMode.quizTopics, 1,
+                                    KidsMode.askedToday + used, KidsMode.skipped,
+                                ).firstOrNull()
+                                if (fresh == null) {
+                                    if (index + 1 >= questions.size) done = true else index++
+                                } else {
+                                    KidsMode.markAsked(listOf(fresh.id))
+                                    questions = questions.toMutableList().also { it[index] = fresh }
+                                }
+                                chosen = null
+                            }
+                        }
                         // Progress dots, instead of a long sentence.
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -317,7 +337,7 @@ fun KidsQuiz(visible: Boolean, onClose: () -> Unit) {
                                         focusRequester = if (i == 0) firstFocus else null,
                                         modifier = Modifier
                                             .weight(1f)
-                                            .trapGrid(rowIndex == 0, rowIndex == rows.lastIndex, column, rowOptions.lastIndex),
+                                            .trapGrid(rowIndex == 0, false, column, rowOptions.lastIndex),
                                     ) {
                                         if (chosen != null) return@QuizOption
                                         chosen = i
@@ -334,6 +354,12 @@ fun KidsQuiz(visible: Boolean, onClose: () -> Unit) {
                             Spacer(Modifier.height(10.dp))
                         }
                         Spacer(Modifier.weight(1f))
+                        KidChip(
+                            stringResource(R.string.kids_quiz_skip),
+                            modifier = Modifier.trapColumn(false, true),
+                            onClick = skip,
+                        )
+                        Spacer(Modifier.height(10.dp))
                         BasicText(
                             stringResource(R.string.kids_quiz_reward_hint),
                             style = Type.Caption.copy(color = Palette.TertiaryLabel, textAlign = TextAlign.Center),
