@@ -65,7 +65,7 @@ import kotlinx.coroutines.withContext
  * password, from Personalization or the time-up screen's parent menu.
  */
 @Composable
-fun KidsPanel(visible: Boolean, apps: List<AppEntry>, onClose: () -> Unit, onPassword: () -> Unit) {
+fun KidsPanel(visible: Boolean, apps: List<AppEntry>, onClose: () -> Unit) {
     val context = LocalContext.current
     var usage by remember { mutableStateOf<Map<String, Int>>(emptyMap()) }
     var categories by remember { mutableStateOf(KidsMode.categories) }
@@ -139,9 +139,6 @@ fun KidsPanel(visible: Boolean, apps: List<AppEntry>, onClose: () -> Unit, onPas
                     KidChip(stringResource(R.string.kids_on), on = KidsMode.quizEnabled) { KidsMode.setQuizOn(true) }
                     Spacer(Modifier.width(8.dp))
                     KidChip(stringResource(R.string.kids_off), on = !KidsMode.quizEnabled) { KidsMode.setQuizOn(false) }
-                }
-                SettingRow(stringResource(R.string.kids_password_label)) {
-                    KidChip(stringResource(R.string.st_pin_change), onClick = onPassword)
                 }
                 Spacer(Modifier.height(6.dp))
                 Box(Modifier.fillMaxWidth().height(1.dp).background(Palette.Hairline))

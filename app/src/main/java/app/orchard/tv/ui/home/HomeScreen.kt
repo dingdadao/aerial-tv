@@ -1059,7 +1059,6 @@ fun HomeScreen(
                 vm.overlay = Overlay.None
                 onStartScreensaver()
             },
-            onPin = { if (it) vm.overlay = Overlay.Pin(PinMode.Create) { vm.overlay = Overlay.Wallpaper } },
             // The child mode is parental: turning it on or changing it goes through the password.
             onKidsMode = { on ->
                 vm.whenUnlocked { KidsMode.setOn(on); vm.overlay = Overlay.Wallpaper }
@@ -1072,7 +1071,6 @@ fun HomeScreen(
             visible = overlay is Overlay.Kids,
             apps = vm.allApps,
             onClose = { vm.overlay = Overlay.Wallpaper },
-            onPassword = { vm.overlay = Overlay.Pin(PinMode.Create) { vm.overlay = Overlay.Kids } },
         )
 
         val quiz = overlay as? Overlay.Quiz

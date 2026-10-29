@@ -13,6 +13,7 @@ import app.orchard.tv.guard.GuardSetup
 import app.orchard.tv.system.DeviceClass
 import app.orchard.tv.wallpaper.AerialQuality
 import java.security.MessageDigest
+import java.security.SecureRandom
 
 /**
  * How the focused app shows itself, named after tvOS's Accessibility > Increase Contrast > Focus Style.
@@ -149,6 +150,16 @@ object AerialSettings {
     const val DEFAULT_PASSWORD = "313074"
 
     /**
+     * The phone page's own password (see PhoneServer): eight letters and digits without the
+     * look-alikes, so it can be read off the TV and typed on a phone. Kept as it stands rather than
+     * hashed, unlike the parent password, because the TV shows it again whenever a parent asks for
+     * it — a random one nobody wrote down would be no use. It is not the parent password and does
+     * not open anything on the TV; it opens the page that can, which is where the parent password
+     * is changed and reset.
+     */
+    var webPassword by mutableStateOf(""); private set
+
+    /**
      * Bumped whenever the PIN is entered, Home is pressed or the PIN is changed: the moments
      * [locked] changes for a reason, when Home has to be arranged again for the child mode.
      */
@@ -199,6 +210,8 @@ object AerialSettings {
             prefs.edit { putString("parent_pw_hash", pinHash) }
         }
         pinSet = true
+        webPassword = prefs.getString("web_pw", null)?.takeIf { it.length >= 6 }
+            ?: newWebPassword().also { prefs.edit { putString("web_pw", it) } }
         oneRowHome = prefs.getBoolean("one_row_home", true)
         peekNextRow = prefs.getBoolean("peek_next_row", true)
         homeColumns = prefs.getInt("home_columns", DEFAULT_HOME_COLUMNS).takeIf { it in HOME_COLUMNS } ?: DEFAULT_HOME_COLUMNS
@@ -252,6 +265,16 @@ object AerialSettings {
     }
 
     /**
+     * Keeps an open parental session open past [UNLOCK_MS]: Home calls it every minute while a
+     * settings sheet is up, and 30 s after one is left it calls [relock] (see HomeViewModel). Does
+     * nothing once locked, so a session cannot be stretched by a caller that came back too late.
+     */
+    fun renew() {
+        if (locked) return
+        unlockedUntil = SystemClock.elapsedRealtime() + UNLOCK_MS
+    }
+
+    /**
      * Sets the 6-digit parent password, or with null resets it to the default [DEFAULT_PASSWORD]
      * (a parent who forgot it). [arrows] is kept for callers from the old PIN UI and ignored.
      */
@@ -265,6 +288,34 @@ object AerialSettings {
 
     private fun hash(pin: String): String =
         MessageDigest.getInstance("SHA-256").digest("aerial:$pin".toByteArray()).joinToString("") { "%02x".format(it) }
+
+    /**
+     * A new phone-page password, [password] as typed or a fresh random one with null, and the one it
+     * replaced. Changing it does not touch the parent password: the two are separate, and only the
+     * page can change the parent password (see PhoneServer).
+     */
+    fun chooseWebPassword(password: String? = null): String {
+        val next = password?.trim()?.takeIf { it.length >= 6 } ?: newWebPassword()
+        webPassword = next
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString("web_pw", next) }
+        return next
+    }
+
+    /** Whether [given] opens the phone page. Compared whole rather than with ==, as it is a password. */
+    fun phonePageOpens(given: String): Boolean {
+        val a = given.toByteArray()
+        val b = webPassword.toByteArray()
+        if (a.size != b.size || b.isEmpty()) return false
+        var difference = 0
+        for (i in a.indices) difference = difference or (a[i].toInt() xor b[i].toInt())
+        return difference == 0
+    }
+
+    private fun newWebPassword(): String {
+        val alphabet = "abcdefghjkmnpqrstuvwxyz23456789"
+        val random = SecureRandom()
+        return (1..8).map { alphabet[random.nextInt(alphabet.length)] }.joinToString("")
+    }
 
     fun chooseOneRowHome(on: Boolean) {
         oneRowHome = on

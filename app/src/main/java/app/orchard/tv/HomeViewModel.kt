@@ -75,6 +75,27 @@ sealed interface Overlay {
 enum class CcPage { Main, Inputs, InputSettings, Update, Setup }
 
 /**
+ * How long a parental session lasts once the settings behind it are left, and how often it is
+ * stretched while they stay open (see [HomeViewModel]). A session that is walked away from used to
+ * run for its full ten minutes: long enough for a child to take the remote and turn the child mode
+ * off from a panel the parent left up.
+ */
+object ParentalSession {
+    /** The panel is gone: this long after it, the password is asked for again. */
+    const val LEAVE_LOCK_MS = 30_000L
+
+    /** The panel is still up: the session is stretched this often, so it never lapses under it. */
+    const val RENEW_MS = 60_000L
+
+    /** Overlays only a parent gets to open: while one is up the session is held, not counted down. */
+    fun holds(overlay: Overlay): Boolean = when (overlay) {
+        Overlay.Wallpaper, Overlay.Kids, Overlay.ParentOptions, Overlay.HiddenApps -> true
+        is Overlay.Pin -> true
+        else -> false
+    }
+}
+
+/**
  * Tiles a cold start reads whole before showing Home (two rows and a half, as many as can show);
  * see AppCatalog.load.
  */
@@ -103,6 +124,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     var loaded by mutableStateOf(false); private set
 
     var overlay by mutableStateOf<Overlay>(Overlay.None)
+    /** Holds or ends the parental session as [overlay] comes and goes; see the init block. */
+    private var parentalJob: Job? = null
     var movingKey by mutableStateOf<String?>(null); private set
 
     var network by mutableStateOf(NetworkStatus()); private set
@@ -193,6 +216,25 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         // The child mode's rules come and go from the phone page, and the quiz tile with them.
         viewModelScope.launch {
             snapshotFlow { KidsMode.enabled to KidsMode.quizTile }.drop(1).collect { if (loaded) arrange() }
+        }
+        // A parental session lasts as long as the sheet it opened, and 30 s past it: left up, it is
+        // stretched every minute, so a long stay never lapses; left behind, the password is asked
+        // for again 30 s later, which is when a child would pick the remote up.
+        viewModelScope.launch {
+            snapshotFlow { overlay }.collect { shown ->
+                parentalJob?.cancel()
+                parentalJob = viewModelScope.launch {
+                    if (ParentalSession.holds(shown)) {
+                        while (true) {
+                            AerialSettings.renew()
+                            delay(ParentalSession.RENEW_MS)
+                        }
+                    } else if (!AerialSettings.locked) {
+                        delay(ParentalSession.LEAVE_LOCK_MS)
+                        if (!ParentalSession.holds(overlay)) AerialSettings.relock()
+                    }
+                }
+            }
         }
         viewModelScope.launch { snapshotFlow { AerialSettings.previewApps }.drop(1).collect { if (loaded) arrange() } }
         // Another number of apps a row: the artwork again if four a row wants it larger, else

@@ -42,7 +42,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -62,6 +61,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.orchard.tv.R
 import app.orchard.tv.kids.KidsMode
 import app.orchard.tv.settings.AerialSettings
@@ -89,7 +89,6 @@ import app.orchard.tv.wallpaper.Wallpapers
 import app.orchard.tv.weather.Weather
 import app.orchard.tv.weather.WeatherKind
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 import androidx.compose.ui.geometry.Size
@@ -106,7 +105,6 @@ fun WallpaperSheet(
     hiddenCount: Int,
     onHiddenApps: () -> Unit,
     onStartScreensaver: () -> Unit,
-    onPin: (on: Boolean) -> Unit,
     onKidsMode: (on: Boolean) -> Unit,
     onKidsManage: () -> Unit,
     onKidsQuiz: () -> Unit,
@@ -160,9 +158,8 @@ fun WallpaperSheet(
                 .padding(start = 40.dp, end = 32.dp, top = 24.dp),
         ) {
             val scroll = rememberScrollState()
-            val scope = rememberCoroutineScope()
             // How Home looks, in the order you see it: the picture behind everything, how Home
-            // is laid out over it, what replaces it when idle, then the weather and the PIN.
+            // is laid out over it, what replaces it when idle, then the weather and the child mode.
             // Settings sit in tvOS-style grouped rows; each group's note follows the focused row.
             Column(Modifier.weight(1f).fillMaxHeight().verticalScroll(scroll)) {
                 BasicText(stringResource(R.string.wp_title), style = Type.LargeTitle)
@@ -327,19 +324,9 @@ fun WallpaperSheet(
                     SettingRow(R.string.wp_weather_city, null, note, first = true) { WeatherValue() }
                 }
 
-                // One row says what it is; a title over it would only repeat it.
-                Spacer(Modifier.height(10.dp))
-                Group(stringResource(R.string.st_pin_hint)) { note ->
-                    SettingRow(R.string.st_pin, null, note, first = true) {
-                        // The password is always set (313074 at first); this row changes it.
-                        // The last row that takes focus: bring the note under it into view too.
-                        ActionChip(
-                            stringResource(R.string.st_pin_change), Glyph.ChevronRight,
-                            { onPin(true) },
-                            onFocused = { scope.launch { scroll.animateScrollTo(scroll.maxValue) } },
-                        )
-                    }
-                }
+                // The parent password is not here: it is changed and reset on the phone page only,
+                // so that a child holding this remote cannot set one they know and then use it to
+                // turn the child mode off. The page's own password is under the QR code.
 
                 // Child mode: the same parental password holds it, and it only acts while the
                 // password is locked, so entering it shows the parent every app again.
@@ -361,7 +348,7 @@ fun WallpaperSheet(
                 Spacer(Modifier.height(24.dp))
             }
             Spacer(Modifier.width(28.dp))
-            PhoneCard(phoneUrl, qr)
+            PhoneCard(phoneUrl, qr, AerialSettings.webPassword)
         }
     }
 
@@ -669,7 +656,7 @@ private fun ScreensaverChoice(onStart: () -> Unit) {
 }
 
 @Composable
-private fun PhoneCard(url: String?, qr: ImageBitmap?) {
+private fun PhoneCard(url: String?, qr: ImageBitmap?, password: String) {
     Column(Modifier.width(220.dp).padding(top = 6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier.size(176.dp).clip(RoundedCornerShape(18.dp)).background(Color.White).padding(14.dp),
@@ -690,8 +677,15 @@ private fun PhoneCard(url: String?, qr: ImageBitmap?) {
         )
         if (url != null) {
             Spacer(Modifier.height(6.dp))
-            // The whole address, token and all, to type into a computer's browser.
+            // The whole address, to type into a computer's browser.
             BasicText(url.removePrefix("http://"), style = Type.Caption.copy(color = Palette.SecondaryLabel))
+            Spacer(Modifier.height(10.dp))
+            // The page asks for this one: it is eight characters with no look-alikes, so it is
+            // read here and typed there. The parent password is not this, and is changed there.
+            BasicText(
+                stringResource(R.string.wp_phone_pw, password),
+                style = Type.Body.copy(color = Palette.Label, letterSpacing = 1.sp),
+            )
         }
     }
 }

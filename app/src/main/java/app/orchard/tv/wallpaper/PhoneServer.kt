@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.content.getSystemService
 import app.orchard.tv.apps.AppCatalog
@@ -39,26 +40,38 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.Inet4Address
 import java.security.SecureRandom
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * The page a phone opens after scanning the TV's QR code: choose a wallpaper and the screensaver,
  * send photos, give an app's tile a picture of one's own, and name the weather's city. Choosing
  * pictures or typing a place with a remote is slow; with a phone it is not.
  *
- * It listens on the local network while Aerial runs (see [listen]), and every address carries a
- * random token shown only on the TV (the QR code and the address under it), so another device on
- * the network cannot use it by guessing. The token stays the same from one start to the next.
+ * It listens on the local network while Aerial runs (see [listen]), at an address that is the same
+ * on every TV and never changes: `http://<the TV's address>:8790`. Typing it, or scanning the code
+ * once, is all it takes to come back to. So the address is not the secret: the page asks for a
+ * password of its own ([AerialSettings.webPassword], shown on the TV and separate from the parent
+ * password), and everything but the page itself waits for the session that password buys.
  */
 class PhoneServer private constructor(private val context: Context, private val token: String) : NanoHTTPD(PORT) {
 
+    /** Page passwords entered right, and when each session runs out; [sessions] outlives a restart. */
+    private val sessions = ConcurrentHashMap<String, Long>()
+    private var failures = 0
+    private var waitUntil = 0L
+
     override fun serve(session: IHTTPSession): Response {
-        val prefix = "/$token"
+        // The address is the same on every TV and does not change: "http://<the TV's address>:8790".
+        // The old "/<token>/" form still answers, so a bookmark made before this keeps working.
         val uri = session.uri
-        if (!uri.startsWith(prefix)) return text(Response.Status.NOT_FOUND, "Not found")
-        val path = uri.removePrefix(prefix).ifEmpty { "/" }
+        val path = (if (uri.startsWith("/$token")) uri.removePrefix("/$token") else uri).ifEmpty { "/" }
         return runCatching {
             when {
                 path == "/" -> newFixedLengthResponse(Response.Status.OK, "text/html; charset=utf-8", page())
+                path == "/api/login" -> login(session)
+                // The page's password, before anything else: the address is not a secret and the
+                // child mode, the parent password and every picture behind it would be open.
+                !opened(session) -> text(Response.Status.UNAUTHORIZED, "password")
                 path == "/api/state" -> json(state())
                 path == "/api/diagnostics" -> text(Response.Status.OK, Diagnostics.report(context))
                 path.startsWith("/thumb/") -> thumb(path.removePrefix("/thumb/"))
@@ -206,6 +219,8 @@ class PhoneServer private constructor(private val context: Context, private val 
                     }
                     json(state())
                 }
+                session.method == Method.POST && path == "/api/parent-password" -> parentPassword(form(session))
+                session.method == Method.POST && path == "/api/web-password" -> webPassword(form(session))
                 session.method == Method.POST && path == "/api/kids/quiz" -> {
                     val topics = form(session)["topics"].orEmpty()
                         .split(',')
@@ -220,6 +235,70 @@ class PhoneServer private constructor(private val context: Context, private val 
             Log.w(TAG, "request failed", it)
             text(Response.Status.INTERNAL_ERROR, "error")
         }
+    }
+
+    /** Whether this request carries a session the page's password bought. */
+    private fun opened(session: IHTTPSession): Boolean {
+        val id = session.headers["cookie"]?.split(';')?.asSequence()
+            ?.map { it.trim() }?.firstOrNull { it.startsWith(COOKIE) }?.removePrefix(COOKIE) ?: return false
+        val now = SystemClock.elapsedRealtime()
+        val until = sessions[id] ?: return false
+        if (now > until) {
+            sessions.remove(id)
+            return false
+        }
+        // Used, so it stays good: a page left open on the kitchen tablet keeps working.
+        sessions[id] = now + SESSION_MS
+        return true
+    }
+
+    /**
+     * The page's password, and the session it buys. Wrong entries in a row make the page wait
+     * longer each time: it is on the home network, where anyone may knock, and the password is
+     * eight characters read off a TV.
+     */
+    private fun login(session: IHTTPSession): Response {
+        val now = SystemClock.elapsedRealtime()
+        if (now < waitUntil) return text(Response.Status.TOO_MANY_REQUESTS, "wait")
+        if (!AerialSettings.phonePageOpens(form(session)["password"].orEmpty())) {
+            failures++
+            if (failures >= MAX_TRIES) {
+                waitUntil = now + WAIT_MS * (failures - MAX_TRIES + 1)
+                failures = 0
+            }
+            return text(Response.Status.UNAUTHORIZED, "password")
+        }
+        failures = 0
+        val id = newSession()
+        sessions[id] = now + SESSION_MS
+        return text(Response.Status.OK, "ok").apply {
+            // Path "/" so the session also counts on a bookmark made with the old token address.
+            addHeader("Set-Cookie", "$COOKIE$id; Path=/; Max-Age=${SESSION_MS / 1000}; HttpOnly; SameSite=Lax")
+        }
+    }
+
+    /**
+     * The parent password, changed from the page — the only place it can be changed, so that a
+     * child holding the remote cannot set one they know and turn the child mode off with it. A
+     * reset for a parent who forgot it is this same call: the page's password is what gets here.
+     */
+    private fun parentPassword(f: Map<String, String>): Response {
+        val password = f["password"].orEmpty()
+        if (password.length != 6 || password.any { !it.isDigit() }) return text(Response.Status.BAD_REQUEST, "bad")
+        onMain {
+            AerialSettings.choosePin(password)
+            // Not left open for ten minutes by a change made from another room.
+            AerialSettings.relock()
+        }
+        return json(state())
+    }
+
+    /** The page's own password. The parent password is not touched, and neither is the page's address. */
+    private fun webPassword(f: Map<String, String>): Response {
+        val password = f["password"].orEmpty().trim()
+        if (password.length < 6) return text(Response.Status.BAD_REQUEST, "bad")
+        onMain { AerialSettings.chooseWebPassword(password) }
+        return json(state())
     }
 
     private fun page(): String = context.assets.open("web/index.html").bufferedReader().use { it.readText() }
@@ -356,7 +435,8 @@ class PhoneServer private constructor(private val context: Context, private val 
             "move" -> if (key in known && target in known) ({ ops.move(key, target) }) else null
             "movein" -> if (key in known && target in known) ({ ops.moveInFolder(key, target) }) else null
             "hide" -> if (key in known) ({ ops.hide(key) }) else null
-            "unhide" -> if (key in known && !AerialSettings.locked) ({ ops.unhide(key) }) else null
+            // The page's password already says this is the parent: no need to unlock on the TV too.
+            "unhide" -> if (key in known) ({ ops.unhide(key) }) else null
             "folder" -> if (key in known && !key.startsWith(FOLDER_KEY_PREFIX)) ({ ops.toFolder(key, folder.ifEmpty { null }) }) else null
             "unfolder" -> if (key in known) ({ ops.outOfFolder(key) }) else null
             "ungroup" -> if (folder in AppCatalog.folderApps) ({ ops.ungroup(folder) }) else null
@@ -471,6 +551,14 @@ class PhoneServer private constructor(private val context: Context, private val 
         /** As for an input's name: Home's caption has room for about this much. */
         private const val FOLDER_NAME_MAX = 24
 
+        /** The session cookie the page's password buys, and how long one holds. */
+        private const val COOKIE = "aerial="
+        private const val SESSION_MS = 12 * 60 * 60 * 1000L
+
+        /** Wrong page passwords in a row before the page waits, and how long the first wait is. */
+        private const val MAX_TRIES = 5
+        private const val WAIT_MS = 30_000L
+
         @Volatile
         private var running: PhoneServer? = null
 
@@ -493,8 +581,8 @@ class PhoneServer private constructor(private val context: Context, private val 
         /** The address to put in the QR code, listening first if need be, or null offline. */
         fun start(context: Context): String? {
             val ip = lanAddress(context) ?: return null
-            val server = listen(context) ?: return null
-            return "http://$ip:$PORT/${server.token}/"
+            listen(context) ?: return null
+            return "http://$ip:$PORT/"
         }
 
         /**
@@ -511,6 +599,13 @@ class PhoneServer private constructor(private val context: Context, private val 
             val alphabet = "abcdefghjkmnpqrstuvwxyz23456789"
             val rnd = SecureRandom()
             return (1..8).map { alphabet[rnd.nextInt(alphabet.length)] }.joinToString("")
+        }
+
+        /** A session, unguessable and long: it stands for a page that was let in. */
+        private fun newSession(): String {
+            val alphabet = "abcdefghijklmnopqrstuvwxyz0123456789"
+            val rnd = SecureRandom()
+            return (1..24).map { alphabet[rnd.nextInt(alphabet.length)] }.joinToString("")
         }
 
         fun lanAddress(context: Context): String? {

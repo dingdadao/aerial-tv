@@ -270,9 +270,37 @@
     .agrid.sorting .atile:not(.lift) { transition: none; }
     .toast { transform: translate(-50%, 0); }
   }
+
+  /* The page's password: the address in the QR code never changes, so this is what opens it. */
+  .gate {
+    position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 24px;
+    background: var(--bg);
+  }
+  .gate .card { width: 100%; max-width: 360px; }
+  .gate h1 { font-size: 30px; font-weight: 700; letter-spacing: -.02em; margin: 0 0 4px; text-align: center; }
+  .gate .foot { margin: 8px 4px 0; text-align: center; }
+  .gate form { display: flex; gap: 10px; margin-top: 20px; }
+  .gate input {
+    flex: 1; min-width: 0; font-size: 20px; letter-spacing: .16em; padding: 14px 16px; border: 0;
+    border-radius: 12px; background: var(--card); color: var(--label); text-align: center;
+  }
+  .gate input:focus { outline: 2px solid var(--tint); outline-offset: 0; }
+  .gate .btn { flex: none; padding: 0 20px; }
+  .gate .err { color: var(--danger); }
 </style>
 </head>
 <body>
+<div class="gate" id="gate" hidden>
+  <div class="card">
+    <h1 data-i18n="gate_h"></h1>
+    <p class="foot" data-i18n="gate_hint"></p>
+    <form id="gateForm">
+      <input id="gateInput" type="password" autocomplete="current-password" enterkeyhint="go">
+      <button class="btn" type="submit" data-i18n="gate_enter"></button>
+    </form>
+    <p class="foot err" id="gateError"></p>
+  </div>
+</div>
 <main>
 <header>
   <button class="link back" id="homeBack" hidden><svg width="11" height="18" viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2L2 10l8 8"/></svg><span data-i18n="tab_home"></span></button>
@@ -367,6 +395,21 @@
     <div class="item"><span class="txt" data-i18n="language"></span><span class="val" id="langName"></span><svg class="chev" width="8" height="14" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1l6 6-6 6"/></svg><select id="lang" data-i18n-aria-label="language"></select></div>
   </div>
 
+  <h2 data-i18n="parent_h"></h2>
+  <div class="list">
+    <div class="item field"><input id="parentNew" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" data-i18n-placeholder="parent_new"></div>
+    <div class="item field"><input id="parentAgain" type="password" inputmode="numeric" maxlength="6" autocomplete="new-password" data-i18n-placeholder="parent_again"></div>
+  </div>
+  <div class="row"><button class="btn" id="parentSave" data-i18n="parent_save"></button></div>
+  <p class="foot" data-i18n="parent_hint"></p>
+
+  <h2 data-i18n="web_h"></h2>
+  <div class="list">
+    <div class="item field"><input id="webNew" type="password" autocomplete="new-password" data-i18n-placeholder="web_new"></div>
+  </div>
+  <div class="row"><button class="btn" id="webSave" data-i18n="web_save"></button></div>
+  <p class="foot" data-i18n="web_hint"></p>
+
   <h2 data-i18n="feedback_h"></h2>
   <div class="list"><button class="item tint center" id="diagBtn" data-i18n="diag_show"></button></div>
   <pre class="diag" id="diag" hidden></pre>
@@ -403,7 +446,7 @@ let state = null, stateJson = '';
 
 // The language: ?lang=ru in the address, else the one picked under More (kept on the phone), else the
 // first of the phone's preferred languages that has a table, else English. Keys are in KEYS, one array of texts per language.
-const KEYS = ["screensaver", "screensaver_short", "ss_aerial", "ss_photos", "ss_clock", "focus", "focus_high", "focus_standard", "weather", "city_ph", "set", "upload_label", "feedback_h", "feedback_hint", "diag_show", "diag_copy", "diag_github", "hint_aerial", "hint_photos", "hint_clock", "g_live", "g_live_sub", "g_daily", "g_daily_sub", "g_photo", "g_builtin", "g_auto", "toast_wallpaper", "aria_delete", "confirm_delete", "wx_clear", "wx_partlycloudy", "wx_cloudy", "wx_fog", "wx_rain", "wx_snow", "wx_thunder", "wx_chosen", "wx_auto_btn", "toast_auto", "wx_guessed", "wx_none", "tag_source", "aria_rename", "toast_renamed", "toast_name_reset", "toast_rename_fail", "aria_reset_icon", "toast_icon_reset", "focus_hint_standard", "focus_hint_high", "daily_title", "daily_caption", "rotate_title", "rotate_caption", "empty_photos", "add_second", "toast_tv_updated", "sending_n", "toast_added", "toast_no_photos", "toast_send_fail", "toast_city_set", "toast_city_nf", "toast_set_fail", "toast_sending_icon", "toast_icon_set", "toast_icon_bad", "diag_collecting", "toast_diag_fail", "toast_copied", "toast_copy_manual", "language", "hint_follows", "ss_videos", "hint_videos", "videos_h", "videos_upload", "videos_hint", "videos_empty", "confirm_video_delete", "toast_videos_added", "toast_video_bad", "sending_video", "hint_system", "tab_home", "tab_more", "current_wp", "cancel", "save", "name_ph", "rename_hint", "change_icon", "this_tv", "folder_count", "folder_ph", "inputs_h", "inputs_hint", "rename_hint_app", "was_named", "arrange_hint", "arrange_unready", "hidden_h", "hidden_none", "hidden_locked", "show_app", "hide_app", "to_folder", "new_folder", "out_of_folder", "ungroup", "ungroup_confirm", "folder_hint", "toast_hidden", "toast_shown", "toast_in_folder", "toast_out_folder", "toast_ungrouped", "tab_looks", "looks_title", "show_on_home", "source_device", "source_plain", "source_device_hint", "tv_model", "tab_kids", "kids_mode_h", "kids_mode_on", "kids_mode_on_sub", "kids_hint_off", "kids_no_pin", "kids_no_usage", "kids_apps_h", "kids_apps_hint", "kids_restrict", "kids_free", "kids_all_day", "kids_used", "kids_earned", "kids_rule_mode", "kids_mode_slot", "kids_mode_quiz", "kids_mode_both", "kids_rule_unlock", "kids_unlock_pin", "kids_unlock_quiz", "kids_rule_quota", "kids_quota_none", "kids_rule_slots", "kids_slot_add", "kids_slot_remove", "toast_kids_saved", "kids_min_unit", "kids_no_apps", "kids_quiz_h", "kids_quiz_hint", "kids_stage_h", "kids_stage_kg", "kids_stage_primary", "kids_subject_math", "kids_subject_poem", "kids_subject_words", "kids_subject_idiom", "kids_subject_fruit", "kids_settings_h", "kids_quiz_toggle", "kids_blocked", "kids_timed", "sw_always", "sw_always_sub", "sw_weather", "sw_saver_time", "sw_saver_time_sub", "g_source_sub", "icon_h", "icon_library", "icon_own", "icon_custom", "toast_icon_picked", "drop_hint", "drop_sub", "drop_none", "toast_diag_paste"];
+const KEYS = ["screensaver", "screensaver_short", "ss_aerial", "ss_photos", "ss_clock", "focus", "focus_high", "focus_standard", "weather", "city_ph", "set", "upload_label", "feedback_h", "feedback_hint", "diag_show", "diag_copy", "diag_github", "hint_aerial", "hint_photos", "hint_clock", "g_live", "g_live_sub", "g_daily", "g_daily_sub", "g_photo", "g_builtin", "g_auto", "toast_wallpaper", "aria_delete", "confirm_delete", "wx_clear", "wx_partlycloudy", "wx_cloudy", "wx_fog", "wx_rain", "wx_snow", "wx_thunder", "wx_chosen", "wx_auto_btn", "toast_auto", "wx_guessed", "wx_none", "tag_source", "aria_rename", "toast_renamed", "toast_name_reset", "toast_rename_fail", "aria_reset_icon", "toast_icon_reset", "focus_hint_standard", "focus_hint_high", "daily_title", "daily_caption", "rotate_title", "rotate_caption", "empty_photos", "add_second", "toast_tv_updated", "sending_n", "toast_added", "toast_no_photos", "toast_send_fail", "toast_city_set", "toast_city_nf", "toast_set_fail", "toast_sending_icon", "toast_icon_set", "toast_icon_bad", "diag_collecting", "toast_diag_fail", "toast_copied", "toast_copy_manual", "language", "hint_follows", "ss_videos", "hint_videos", "videos_h", "videos_upload", "videos_hint", "videos_empty", "confirm_video_delete", "toast_videos_added", "toast_video_bad", "sending_video", "hint_system", "tab_home", "tab_more", "current_wp", "cancel", "save", "name_ph", "rename_hint", "change_icon", "this_tv", "folder_count", "folder_ph", "inputs_h", "inputs_hint", "rename_hint_app", "was_named", "arrange_hint", "arrange_unready", "hidden_h", "hidden_none", "hidden_locked", "show_app", "hide_app", "to_folder", "new_folder", "out_of_folder", "ungroup", "ungroup_confirm", "folder_hint", "toast_hidden", "toast_shown", "toast_in_folder", "toast_out_folder", "toast_ungrouped", "tab_looks", "looks_title", "show_on_home", "source_device", "source_plain", "source_device_hint", "tv_model", "tab_kids", "kids_mode_h", "kids_mode_on", "kids_mode_on_sub", "kids_hint_off", "kids_no_pin", "kids_no_usage", "kids_apps_h", "kids_apps_hint", "kids_restrict", "kids_free", "kids_all_day", "kids_used", "kids_earned", "kids_rule_mode", "kids_mode_slot", "kids_mode_quiz", "kids_mode_both", "kids_rule_unlock", "kids_unlock_pin", "kids_unlock_quiz", "kids_rule_quota", "kids_quota_none", "kids_rule_slots", "kids_slot_add", "kids_slot_remove", "toast_kids_saved", "kids_min_unit", "kids_no_apps", "kids_quiz_h", "kids_quiz_hint", "kids_stage_h", "kids_stage_kg", "kids_stage_primary", "kids_subject_math", "kids_subject_poem", "kids_subject_words", "kids_subject_idiom", "kids_subject_fruit", "kids_settings_h", "kids_quiz_toggle", "kids_blocked", "kids_timed", "sw_always", "sw_always_sub", "sw_weather", "sw_saver_time", "sw_saver_time_sub", "g_source_sub", "icon_h", "icon_library", "icon_own", "icon_custom", "toast_icon_picked", "drop_hint", "drop_sub", "drop_none", "toast_diag_paste", "gate_h", "gate_hint", "gate_enter", "gate_wrong", "gate_wait", "parent_h", "parent_hint", "parent_new", "parent_again", "parent_save", "parent_bad", "parent_ok", "web_h", "web_new", "web_save", "web_bad", "web_ok", "web_hint"];
 const TEXTS = {
  "zh": [
   "屏幕保护程序",
@@ -588,7 +631,25 @@ const TEXTS = {
   "松开即可发送到电视",
   "照片用作壁纸，视频加入屏保",
   "只能发送照片和视频（MP4、MOV）",
-  "诊断信息已复制。在 GitHub 打开的页面里，把它粘贴到「诊断信息」一栏。"
+  "诊断信息已复制。在 GitHub 打开的页面里，把它粘贴到「诊断信息」一栏。",
+  "网页访问密码",
+  "密码在电视的「个性化」页上，输一次就能管理这台电视",
+  "进入",
+  "密码不对",
+  "试了太多次，等一会儿再试",
+  "电视家长密码",
+  "电视上进入设置、关掉儿童模式时要输的 6 位数字。只能在这里改，也在这里重设",
+  "6 位数字",
+  "再输一次",
+  "保存密码",
+  "两次数要一样，而且都是 6 位数字",
+  "电视密码已经改好了",
+  "网页访问密码",
+  "新密码，至少 6 位",
+  "改网页密码",
+  "至少 6 位",
+  "网页密码已经改好了，下次打开要用新的",
+  "只影响手机打开这个页面，和电视上的密码是两回事"
  ],
  "en": [
   "Screensaver",
@@ -773,7 +834,25 @@ const TEXTS = {
   "Drop to send to the TV",
   "Photos become wallpapers, videos join the screensaver",
   "Only photos and videos (MP4, MOV) can be sent",
-  "Diagnostics copied. On the GitHub page that opens, paste them into Diagnostics."
+  "Diagnostics copied. On the GitHub page that opens, paste them into Diagnostics.",
+  "Page password",
+  "The TV shows it under Personalize; once entered, the page can manage this TV",
+  "Open",
+  "Wrong password",
+  "Too many tries — wait a moment",
+  "TV parent password",
+  "The six digits the TV asks for before its settings and the child mode. Change and reset it here; nowhere else",
+  "Six digits",
+  "Again",
+  "Save password",
+  "Both must match, and be six digits",
+  "The TV password is changed",
+  "Page password",
+  "New password, six characters or more",
+  "Change page password",
+  "Six characters or more",
+  "The page password is changed; the next opening asks for it",
+  "This only opens this page on a phone; the TV's password is a different one"
  ],
  "ru": [
   "Заставка",
@@ -958,7 +1037,25 @@ const TEXTS = {
   "Отпустите, чтобы отправить на телевизор",
   "Фото станут обоями, видео — заставкой",
   "Можно отправлять только фото и видео (MP4, MOV)",
-  "Диагностика скопирована. На открывшейся странице GitHub вставьте её в поле «Диагностика»."
+  "Диагностика скопирована. На открывшейся странице GitHub вставьте её в поле «Диагностика».",
+  "Пароль страницы",
+  "Телевизор показывает его в «Персонализации»; после входа страница управляет этим телевизором",
+  "Войти",
+  "Неверный пароль",
+  "Слишком много попыток — подождите",
+  "Родительский пароль телевизора",
+  "Шесть цифр, которые телевизор спрашивает перед настройками и детским режимом. Сменить и сбросить его можно только здесь",
+  "Шесть цифр",
+  "Ещё раз",
+  "Сохранить пароль",
+  "Оба должны совпадать и состоять из шести цифр",
+  "Пароль телевизора изменён",
+  "Пароль страницы",
+  "Новый пароль, не короче шести знаков",
+  "Сменить пароль страницы",
+  "Не короче шести знаков",
+  "Пароль страницы изменён; в следующий раз спросят его",
+  "Это открывает только эту страницу на телефоне; пароль телевизора — другой"
  ],
  "uk": [
   "Заставка",
@@ -1143,7 +1240,25 @@ const TEXTS = {
   "Відпустіть, щоб надіслати на телевізор",
   "Фото стануть шпалерами, відео — заставкою",
   "Можна надсилати лише фото й відео (MP4, MOV)",
-  "Діагностику скопійовано. На сторінці GitHub, що відкриється, вставте її в поле «Діагностика»."
+  "Діагностику скопійовано. На сторінці GitHub, що відкриється, вставте її в поле «Діагностика».",
+  "Пароль сторінки",
+  "Телевізор показує його в «Персоналізації»; після входу сторінка керує цим телевізором",
+  "Увійти",
+  "Невірний пароль",
+  "Забагато спроб — зачекайте",
+  "Батьківський пароль телевізора",
+  "Шість цифр, які телевізор запитує перед налаштуваннями та дитячим режимом. Змінити й скинути його можна лише тут",
+  "Шість цифр",
+  "Ще раз",
+  "Зберегти пароль",
+  "Обидва мають збігатися і містити шість цифр",
+  "Пароль телевізора змінено",
+  "Пароль сторінки",
+  "Новий пароль, щонайменше шість знаків",
+  "Змінити пароль сторінки",
+  "Щонайменше шість знаків",
+  "Пароль сторінки змінено; наступного разу запитають його",
+  "Це відкриває лише цю сторінку на телефоні; пароль телевізора — інший"
  ],
  "kk": [
   "Экран қорғаушы",
@@ -1328,7 +1443,25 @@ const TEXTS = {
   "Теледидарға жіберу үшін босатыңыз",
   "Фотолар түсқағаз, бейнелер скринсейвер болады",
   "Тек фото мен бейне (MP4, MOV) жіберуге болады",
-  "Диагностика көшірілді. Ашылған GitHub бетінде оны «Диагностика» өрісіне қойыңыз."
+  "Диагностика көшірілді. Ашылған GitHub бетінде оны «Диагностика» өрісіне қойыңыз.",
+  "Парақша құпиясөзі",
+  "Теледидар оны «Жекешелендіру» бөлімінде көрсетеді; кірген соң парақша осы теледидарды басқарады",
+  "Кіру",
+  "Құпиясөз дұрыс емес",
+  "Тым көп әрекет — күте тұрыңыз",
+  "Теледидардың ата-ана құпиясөзі",
+  "Теледидар баптаулар мен балалар режимінің алдында сұрайтын алты цифр. Оны тек осында өзгертуге және қалпына келтіруге болады",
+  "Алты цифр",
+  "Тағы да",
+  "Құпиясөзді сақтау",
+  "Екеуі бірдей және алты цифр болуы керек",
+  "Теледидар құпиясөзі өзгертілді",
+  "Парақша құпиясөзі",
+  "Жаңа құпиясөз, кемінде алты таңба",
+  "Парақша құпиясөзін өзгерту",
+  "Кемінде алты таңба",
+  "Парақша құпиясөзі өзгертілді; келесі жолы жаңасы сұралады",
+  "Бұл телефонда тек осы парақшаны ашады; теледидар құпиясөзі — бөлек"
  ]
 };
 const LANGS = Object.keys(TEXTS);
@@ -1388,9 +1521,22 @@ function toast(msg) {
   clearTimeout(toast.timer); toast.timer = setTimeout(() => box.classList.remove('on'), 1800);
 }
 
+/* The page's password. The address in the QR code is the same every time (a bookmark keeps
+   working), so the address cannot be the secret: the TV shows a password of its own, and every
+   call but the page itself waits for the session that password buys. */
+const GATE = $('#gate');
+function gate(error) {
+  GATE.hidden = false;
+  $('#gateError').textContent = error === 'wait' ? t('gate_wait') : error ? t('gate_wrong') : '';
+  $('#gateInput').value = '';
+  setTimeout(() => $('#gateInput').focus(), 60);
+}
+function ungate() { GATE.hidden = true; }
+
 async function api(path, body) {
   const opts = body ? { method: 'POST', body: new URLSearchParams(body) } : {};
   const r = await fetch(base + path, opts);
+  if (r.status === 401 || r.status === 429) { gate(r.status === 429 ? 'wait' : true); throw new Error(r.status); }
   if (!r.ok) throw new Error(r.status);
   return r.json();
 }
@@ -2334,6 +2480,40 @@ function render() {
   renderKids();
   renderArrange(false);
 }
+
+/* The page's password, typed once: the session it sets holds for the evening. */
+$('#gateForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const password = $('#gateInput').value.trim();
+  if (!password) return;
+  const r = await fetch(base + 'api/login', { method: 'POST', body: new URLSearchParams({ password }) }).catch(() => null);
+  if (!r || !r.ok) { gate(r && r.status === 429 ? 'wait' : true); return; }
+  ungate();
+  refresh();
+});
+
+/* The TV's parent password: changed and reset here only, so a child holding the remote cannot set
+   one they know. */
+$('#parentSave').addEventListener('click', async () => {
+  const password = $('#parentNew').value.trim();
+  if (password !== $('#parentAgain').value.trim() || !/^\d{6}$/.test(password)) { toast(t('parent_bad')); return; }
+  try {
+    await api('api/parent-password', { password });
+    $('#parentNew').value = ''; $('#parentAgain').value = '';
+    toast(t('parent_ok'));
+  } catch (e) { toast(t('parent_bad')); }
+});
+
+/* This page's own password: separate from the TV's, and the address stays as it is. */
+$('#webSave').addEventListener('click', async () => {
+  const password = $('#webNew').value.trim();
+  if (password.length < 6) { toast(t('web_bad')); return; }
+  try {
+    await api('api/web-password', { password });
+    $('#webNew').value = '';
+    toast(t('web_ok'));
+  } catch (e) { toast(t('web_bad')); }
+});
 
 initLangSwitch();
 applyI18n();

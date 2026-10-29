@@ -277,10 +277,12 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
 
         Spacer(Modifier.height(6.dp))
         // How Home looks (wallpaper, screensaver, focus style, hidden apps, weather) lives in one place.
+        // Behind the password too: the sheet holds the child mode's switch and the password itself,
+        // so opening it unasked is a way past both (see HomeViewModel.whenUnlocked).
         MenuRow(
             Glyph.Photo,
             stringResource(R.string.cc_personalize),
-            onClick = { vm.overlay = Overlay.Wallpaper },
+            onClick = { vm.whenUnlocked { vm.overlay = Overlay.Wallpaper } },
         )
         // What the TV opens when switched on: easy to forget, and puzzling when it happens.
         vm.bootTargetLabel()?.let { name ->
