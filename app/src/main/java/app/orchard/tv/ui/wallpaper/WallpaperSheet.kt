@@ -42,6 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -89,6 +90,7 @@ import app.orchard.tv.wallpaper.Wallpapers
 import app.orchard.tv.weather.Weather
 import app.orchard.tv.weather.WeatherKind
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 import androidx.compose.ui.geometry.Size
@@ -158,6 +160,7 @@ fun WallpaperSheet(
                 .padding(start = 40.dp, end = 32.dp, top = 24.dp),
         ) {
             val scroll = rememberScrollState()
+            val scope = rememberCoroutineScope()
             // How Home looks, in the order you see it: the picture behind everything, how Home
             // is laid out over it, what replaces it when idle, then the weather and the child mode.
             // Settings sit in tvOS-style grouped rows; each group's note follows the focused row.
@@ -342,7 +345,11 @@ fun WallpaperSheet(
                         ActionChip(stringResource(R.string.kids_open), Glyph.ChevronRight, onKidsManage)
                     }
                     SettingRow(R.string.kids_quiz, null, note) {
-                        ActionChip(stringResource(R.string.kids_start), Glyph.ChevronRight, onKidsQuiz)
+                        // The last row that takes focus: bring the note under it into view too.
+                        ActionChip(
+                            stringResource(R.string.kids_start), Glyph.ChevronRight, onKidsQuiz,
+                            onFocused = { scope.launch { scroll.animateScrollTo(scroll.maxValue) } },
+                        )
                     }
                 }
                 Spacer(Modifier.height(24.dp))
