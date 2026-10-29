@@ -285,7 +285,7 @@
     border-radius: 12px; background: var(--card); color: var(--label); text-align: center;
   }
   .gate input:focus { outline: 2px solid var(--tint); outline-offset: 0; }
-  .gate .btn { flex: none; padding: 0 20px; }
+  .gate .btn { flex: none; width: auto; padding: 0 20px; }
   .gate .err { color: var(--danger); }
 
   /* A console still on the password every console starts with: said on every tab, until changed. */
@@ -1560,17 +1560,23 @@ function toast(msg) {
    call but the page itself waits for the session that password buys. */
 const GATE = $('#gate');
 function gate(error) {
+  const opening = GATE.hidden;
   GATE.hidden = false;
-  $('#gateError').textContent = error === 'wait' ? t('gate_wait') : error ? t('gate_wrong') : '';
-  $('#gateInput').value = '';
-  setTimeout(() => $('#gateInput').focus(), 60);
+  // Opened because there is no session yet: a fresh prompt, so nothing to complain about and
+  // nothing to wipe — the polling must not clear a password being typed.
+  if (opening) {
+    $('#gateError').textContent = '';
+    $('#gateInput').value = '';
+    setTimeout(() => $('#gateInput').focus(), 60);
+  }
+  if (!opening && error) $('#gateError').textContent = error === 'wait' ? t('gate_wait') : t('gate_wrong');
 }
 function ungate() { GATE.hidden = true; }
 
 async function api(path, body) {
   const opts = body ? { method: 'POST', body: new URLSearchParams(body) } : {};
   const r = await fetch(base + path, opts);
-  if (r.status === 401 || r.status === 429) { gate(r.status === 429 ? 'wait' : true); throw new Error(r.status); }
+  if (r.status === 401 || r.status === 429) { gate(r.status === 429 ? 'wait' : null); throw new Error(r.status); }
   if (!r.ok) throw new Error(r.status);
   return r.json();
 }
