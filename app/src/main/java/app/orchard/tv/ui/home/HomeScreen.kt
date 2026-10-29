@@ -75,6 +75,12 @@ import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.apps.AppEntry
 import app.orchard.tv.ui.control.ControlCenter
 import app.orchard.tv.ui.wallpaper.WallpaperSheet
+import app.orchard.tv.kids.KidsMode
+import app.orchard.tv.ui.kids.KidsPanel
+import app.orchard.tv.ui.kids.KidsQuiz
+import app.orchard.tv.ui.kids.KidsStatusPill
+import app.orchard.tv.ui.kids.KidsTimeUp
+import app.orchard.tv.ui.kids.ParentOptions
 import app.orchard.tv.wallpaper.ScreensaverMode
 import app.orchard.tv.wallpaper.Wallpapers
 import app.orchard.tv.ui.components.liquidGlass
@@ -199,6 +205,8 @@ fun HomeScreen(
     var indexAfterOverlay by remember { mutableStateOf(0) }
     var pillFocused by remember { mutableStateOf(false) }
     var lastFocusedIndex by remember { mutableStateOf(0) }
+    // The time-up screen the parent menu stands in for, so extending can hand that app back.
+    var timeUpForParent by remember { mutableStateOf<Overlay.TimeUp?>(null) }
     val focusedIndex = apps.indexOfFirst { it.key == focusedKey }
     val focusedRow = if (pillFocused || focusedIndex < 0) 0 else focusedIndex / COLUMNS
     val gridEnabled = overlay == Overlay.None
@@ -658,6 +666,11 @@ fun HomeScreen(
                     toSaver = { toSaver.value },
                 )
             }
+            // With the child mode on, the budget sits by the pill: left today, used, total.
+            KidsStatusPill(
+                enabled = KidsMode.enabled,
+                modifier = Modifier.padding(end = 14.dp),
+            )
             StatusPill(
                 now = now,
                 network = vm.network,
@@ -805,10 +818,63 @@ fun HomeScreen(
                 vm.overlay = Overlay.None
                 onStartScreensaver()
             },
-            onPin = { on ->
-                if (on) vm.overlay = Overlay.Pin(PinMode.Create) { vm.overlay = Overlay.Wallpaper }
-                else vm.whenUnlocked { AerialSettings.choosePin(null); vm.overlay = Overlay.Wallpaper }
+            onPin = { if (it) vm.overlay = Overlay.Pin(PinMode.Create) { vm.overlay = Overlay.Wallpaper } },
+            // The child mode is parental: turning it on or changing it goes through the password.
+            onKidsMode = { on ->
+                vm.whenUnlocked { KidsMode.setOn(on); vm.overlay = Overlay.Wallpaper }
             },
+            onKidsManage = { vm.whenUnlocked { vm.overlay = Overlay.Kids } },
+            onKidsQuiz = { vm.openQuiz(null) },
+        )
+
+        KidsPanel(
+            visible = overlay is Overlay.Kids,
+            apps = vm.allApps,
+            onClose = { vm.overlay = Overlay.Wallpaper },
+            onPassword = { vm.overlay = Overlay.Pin(PinMode.Create) { vm.overlay = Overlay.Kids } },
+        )
+
+        val quiz = overlay as? Overlay.Quiz
+        KidsQuiz(
+            visible = quiz != null,
+            onClose = { vm.overlay = Overlay.None },
+        )
+
+        val timeUp = overlay as? Overlay.TimeUp
+        KidsTimeUp(
+            visible = timeUp != null,
+            appLabel = timeUp?.appLabel,
+            block = timeUp?.block ?: KidsMode.Block.TimeUp,
+            onQuiz = { vm.overlay = Overlay.Quiz(timeUp?.appKey) },
+            // The password opens the parent menu: settings, waive today, or add minutes.
+            onPin = { vm.whenUnlocked { timeUpForParent = timeUp; vm.overlay = Overlay.ParentOptions } },
+            onClose = { vm.overlay = Overlay.None },
+        )
+
+        ParentOptions(
+            visible = overlay is Overlay.ParentOptions,
+            onSettings = { timeUpForParent = null; vm.overlay = Overlay.Kids },
+            onExempt = {
+                KidsMode.setExempt(true)
+                timeUpForParent = null
+                vm.overlay = Overlay.None
+            },
+            onExtend = { minutes ->
+                val blocked = timeUpForParent
+                KidsMode.extend(minutes)
+                // The PIN's free window would otherwise give the child ten minutes whatever is added,
+                // and the added minutes would not be seen running out; the parent has handed the TV
+                // back, so the child mode counts from now.
+                AerialSettings.relock()
+                vm.notify(appContext.getString(R.string.kids_extended_notice, minutes))
+                timeUpForParent = null
+                vm.overlay = Overlay.None
+                // The app was taken away a moment ago: open it again, where the added minutes run.
+                if (blocked?.block == KidsMode.Block.TimeUp) {
+                    vm.entry(blocked.appKey)?.let { onLaunch(it, null) }
+                }
+            },
+            onClose = { timeUpForParent = null; vm.overlay = Overlay.None },
         )
 
         val pin = overlay as? Overlay.Pin

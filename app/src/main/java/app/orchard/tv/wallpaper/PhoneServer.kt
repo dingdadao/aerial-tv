@@ -15,6 +15,8 @@ import app.orchard.tv.apps.CustomIcons
 import app.orchard.tv.apps.SourceDevice
 import app.orchard.tv.apps.SourceLooks
 import app.orchard.tv.apps.TileArtFactory
+import app.orchard.tv.kids.KidsMode
+import app.orchard.tv.kids.QuizBank
 import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.system.Diagnostics
 import app.orchard.tv.system.currentNetwork
@@ -145,6 +147,38 @@ class PhoneServer private constructor(private val context: Context, private val 
                     onMain { Weather.useNetworkLocation() }
                     json(state())
                 }
+                session.method == Method.POST && path == "/api/kids/enabled" -> {
+                    val on = form(session)["on"] == "1"
+                    onMain { KidsMode.setOn(on) }
+                    json(state())
+                }
+                session.method == Method.POST && path == "/api/kids/category" -> {
+                    val f = form(session)
+                    val pkg = f["app"].orEmpty()
+                    val known = AppCatalog.loaded.any { it.key == pkg }
+                    if (known) onMain { KidsMode.setCategory(pkg, KidsMode.Category.of(f["category"])) }
+                    json(state().put("saved", known))
+                }
+                session.method == Method.POST && path == "/api/kids/settings" -> {
+                    val f = form(session)
+                    onMain {
+                        f["quota"]?.toIntOrNull()?.let { KidsMode.setQuota(it) }
+                        f["slots"]?.let { raw ->
+                            val parsed = runCatching { JSONArray(raw) }.getOrDefault(JSONArray())
+                            KidsMode.setSlotList((0 until parsed.length()).mapNotNull { KidsMode.parseSlot(parsed.optString(it)) })
+                        }
+                        f["quiz_enabled"]?.let { KidsMode.setQuizOn(it == "1") }
+                    }
+                    json(state())
+                }
+                session.method == Method.POST && path == "/api/kids/quiz" -> {
+                    val topics = form(session)["topics"].orEmpty()
+                        .split(',')
+                        .mapNotNull { QuizBank.of(it.trim()) }
+                        .toSet()
+                    onMain { KidsMode.chooseQuizTopics(topics) }
+                    json(state())
+                }
                 else -> text(Response.Status.NOT_FOUND, "Not found")
             }
         }.getOrElse {
@@ -212,6 +246,30 @@ class PhoneServer private constructor(private val context: Context, private val 
                 put("place", Weather.place ?: "")
                 put("chosen", Weather.chosen)
                 Weather.now?.let { put("celsius", it.celsius); put("kind", it.kind.name.lowercase()); put("day", it.day) }
+            })
+            .put("kids", kidsState())
+    }
+
+    /**
+     * Child mode as the phone page shows it: the switch, the global time and hours, and each app's
+     * category and minutes today.
+     */
+    private fun kidsState(): JSONObject {
+        val usage = KidsMode.usageToday(context)
+        return JSONObject()
+            .put("enabled", KidsMode.enabled)
+            .put("pinSet", AerialSettings.pinSet)
+            .put("usageStats", KidsMode.canCountTime(context))
+            .put("quizTopics", JSONArray(KidsMode.quizTopics.map { it.key }))
+            .put("quota", KidsMode.dailyQuota)
+            .put("slots", JSONArray(KidsMode.slots.map { KidsMode.formatSlot(it) }))
+            .put("quizEnabled", KidsMode.quizEnabled)
+            .put("earned", KidsMode.earned)
+            .put("extended", KidsMode.extended)
+            .put("exempt", KidsMode.exemptToday)
+            .put("usage", JSONObject().apply { usage.forEach { (pkg, minutes) -> put(pkg, minutes) } })
+            .put("categories", JSONObject().apply {
+                KidsMode.categories.forEach { (pkg, category) -> put(pkg, category.key) }
             })
     }
 

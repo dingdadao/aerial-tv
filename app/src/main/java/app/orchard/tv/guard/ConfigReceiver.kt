@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
  *   ... --ez own_screensaver true   (keep Aerial as the system screensaver; see GuardSetup)
  *   ... --ez guard_off_in_standby true  (Home Guard leaves at screen off, back at screen on;
  *                                   for TVs that do not wake with it enabled, issue #371)
- *   ... --ez clear_pin true         (turn the parental PIN off, for an owner who forgot it)
+ *   ... --ez clear_pin true         (reset the parent password to 313074, for an owner who forgot it)
  *   ... --ez large_clock true --ez clock_right false --ez one_row_home true
  *       --ez peek_next_row false --ez home_plate true --ez show_all_names false
  *                                   (Home's layout, as in Personalize; for screenshots of each)

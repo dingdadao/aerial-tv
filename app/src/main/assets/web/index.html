@@ -237,6 +237,28 @@
   <input id="iconFile" type="file" accept="image/*" hidden>
 </section>
 
+<!-- Child mode: the apps a child cannot use freely, and each one's rule -->
+<section data-tab="kids" hidden>
+  <h2 class="big" data-i18n="kids_mode_h"></h2>
+  <div class="list">
+    <label class="item">
+      <span class="txt"><span data-i18n="kids_mode_on"></span><span class="sub" data-i18n="kids_mode_on_sub"></span></span>
+      <input class="switch" type="checkbox" id="kidsOn" data-i18n-aria-label="kids_mode_on">
+    </label>
+  </div>
+  <p class="foot" id="kidsFoot"></p>
+  <h2 data-i18n="kids_settings_h"></h2>
+  <div class="list" id="kidsSettings"></div>
+  <h2 data-i18n="kids_stage_h"></h2>
+  <div class="list" id="kidsStage" role="radiogroup" data-i18n-aria-label="kids_stage_h"></div>
+  <h2 data-i18n="kids_quiz_h"></h2>
+  <div class="list" id="kidsQuiz" data-i18n-aria-label="kids_quiz_h"></div>
+  <p class="foot" data-i18n="kids_quiz_hint"></p>
+  <h2 data-i18n="kids_apps_h"></h2>
+  <div class="list" id="kidsApps"></div>
+  <p class="foot" data-i18n="kids_apps_hint"></p>
+</section>
+
 <!-- Wallpaper and screensaver -->
 <section data-tab="looks" hidden>
   <div class="hero" id="hero"><img id="heroImg" alt=""><div class="cap"><small data-i18n="current_wp"></small><b id="heroTitle"></b></div></div>
@@ -300,6 +322,7 @@
 
 <nav role="tablist">
   <button role="tab" data-go="home"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="7" height="6" rx="1.8"/><rect x="13.5" y="4.5" width="7" height="6" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="6" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="6" rx="1.8"/></svg><span data-i18n="tab_home"></span></button>
+  <button role="tab" data-go="kids"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.2l7 2.8v5.2c0 4.3-3 7.7-7 9.6-4-1.9-7-5.3-7-9.6V6z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg><span data-i18n="tab_kids"></span></button>
   <button role="tab" data-go="looks"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="15" rx="3"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M3.5 17l5-5 4 4 2.5-2.5 5.5 5"/></svg><span data-i18n="tab_looks"></span></button>
   <button role="tab" data-go="more"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><circle cx="8" cy="12" r=".6" fill="currentColor"/><circle cx="12" cy="12" r=".6" fill="currentColor"/><circle cx="16" cy="12" r=".6" fill="currentColor"/></svg><span data-i18n="tab_more"></span></button>
 </nav>
@@ -321,7 +344,7 @@ let state = null, stateJson = '';
 
 // The language: ?lang=ru in the address, else the one picked under More (kept on the phone), else the
 // first of the phone's preferred languages that has a table, else English. Keys are in KEYS, one array of texts per language.
-const KEYS = ["screensaver", "screensaver_short", "ss_aerial", "ss_photos", "ss_clock", "focus", "focus_high", "focus_standard", "weather", "city_ph", "set", "upload_label", "feedback_h", "feedback_hint", "diag_show", "diag_copy", "diag_github", "hint_aerial", "hint_photos", "hint_clock", "g_live", "g_live_sub", "g_daily", "g_daily_sub", "g_photo", "g_builtin", "g_auto", "toast_wallpaper", "aria_delete", "confirm_delete", "wx_clear", "wx_partlycloudy", "wx_cloudy", "wx_fog", "wx_rain", "wx_snow", "wx_thunder", "wx_chosen", "wx_auto_btn", "toast_auto", "wx_guessed", "wx_none", "tag_source", "aria_rename", "toast_renamed", "toast_name_reset", "toast_rename_fail", "aria_reset_icon", "toast_icon_reset", "focus_hint_standard", "focus_hint_high", "daily_title", "daily_caption", "rotate_title", "rotate_caption", "empty_photos", "add_second", "toast_tv_updated", "sending_n", "toast_added", "toast_no_photos", "toast_send_fail", "toast_city_set", "toast_city_nf", "toast_set_fail", "toast_sending_icon", "toast_icon_set", "toast_icon_bad", "diag_collecting", "toast_diag_fail", "toast_copied", "toast_copy_manual", "language", "hint_follows", "ss_videos", "hint_videos", "videos_h", "videos_upload", "videos_hint", "videos_empty", "confirm_video_delete", "toast_videos_added", "toast_video_bad", "sending_video", "hint_system", "tab_home", "tab_more", "current_wp", "cancel", "save", "name_ph", "rename_hint", "change_icon", "this_tv", "folder_count", "folder_ph", "inputs_h", "inputs_hint", "rename_hint_app", "was_named", "arrange_hint", "arrange_unready", "hidden_h", "hidden_none", "hidden_locked", "show_app", "hide_app", "to_folder", "new_folder", "out_of_folder", "ungroup", "ungroup_confirm", "folder_hint", "toast_hidden", "toast_shown", "toast_in_folder", "toast_out_folder", "toast_ungrouped", "tab_looks", "looks_title", "show_on_home", "source_device", "source_plain", "source_device_hint", "tv_model"];
+const KEYS = ["screensaver", "screensaver_short", "ss_aerial", "ss_photos", "ss_clock", "focus", "focus_high", "focus_standard", "weather", "city_ph", "set", "upload_label", "feedback_h", "feedback_hint", "diag_show", "diag_copy", "diag_github", "hint_aerial", "hint_photos", "hint_clock", "g_live", "g_live_sub", "g_daily", "g_daily_sub", "g_photo", "g_builtin", "g_auto", "toast_wallpaper", "aria_delete", "confirm_delete", "wx_clear", "wx_partlycloudy", "wx_cloudy", "wx_fog", "wx_rain", "wx_snow", "wx_thunder", "wx_chosen", "wx_auto_btn", "toast_auto", "wx_guessed", "wx_none", "tag_source", "aria_rename", "toast_renamed", "toast_name_reset", "toast_rename_fail", "aria_reset_icon", "toast_icon_reset", "focus_hint_standard", "focus_hint_high", "daily_title", "daily_caption", "rotate_title", "rotate_caption", "empty_photos", "add_second", "toast_tv_updated", "sending_n", "toast_added", "toast_no_photos", "toast_send_fail", "toast_city_set", "toast_city_nf", "toast_set_fail", "toast_sending_icon", "toast_icon_set", "toast_icon_bad", "diag_collecting", "toast_diag_fail", "toast_copied", "toast_copy_manual", "language", "hint_follows", "ss_videos", "hint_videos", "videos_h", "videos_upload", "videos_hint", "videos_empty", "confirm_video_delete", "toast_videos_added", "toast_video_bad", "sending_video", "hint_system", "tab_home", "tab_more", "current_wp", "cancel", "save", "name_ph", "rename_hint", "change_icon", "this_tv", "folder_count", "folder_ph", "inputs_h", "inputs_hint", "rename_hint_app", "was_named", "arrange_hint", "arrange_unready", "hidden_h", "hidden_none", "hidden_locked", "show_app", "hide_app", "to_folder", "new_folder", "out_of_folder", "ungroup", "ungroup_confirm", "folder_hint", "toast_hidden", "toast_shown", "toast_in_folder", "toast_out_folder", "toast_ungrouped", "tab_looks", "looks_title", "show_on_home", "source_device", "source_plain", "source_device_hint", "tv_model", "tab_kids", "kids_mode_h", "kids_mode_on", "kids_mode_on_sub", "kids_hint_off", "kids_no_pin", "kids_no_usage", "kids_apps_h", "kids_apps_hint", "kids_restrict", "kids_free", "kids_all_day", "kids_used", "kids_earned", "kids_rule_mode", "kids_mode_slot", "kids_mode_quiz", "kids_mode_both", "kids_rule_unlock", "kids_unlock_pin", "kids_unlock_quiz", "kids_rule_quota", "kids_quota_none", "kids_rule_slots", "kids_slot_add", "kids_slot_remove", "toast_kids_saved", "kids_min_unit", "kids_no_apps", "kids_quiz_h", "kids_quiz_hint", "kids_stage_h", "kids_stage_kg", "kids_stage_primary", "kids_subject_math", "kids_subject_poem", "kids_subject_words", "kids_subject_idiom", "kids_subject_fruit", "kids_settings_h", "kids_quiz_toggle", "kids_blocked", "kids_timed"];
 const TEXTS = {
  "zh": [
   "屏幕保护程序",
@@ -448,7 +471,50 @@ const TEXTS = {
   "接入的设备",
   "默认",
   "选一个设备，电视上这个信号源的图标会换成它的样子，名字也跟着变；自己起的名字会被替换。",
-  "型号"
+  "型号",
+  "儿童",
+  "儿童管控",
+  "开启儿童管控",
+  "开启后，标记的应用按各自的时段和时长受限；没标记的应用照常使用。",
+  "儿童管控已关闭，所有应用都可以自由使用。",
+  "还没设置家长密码：孩子可以在电视上直接关掉管控。先在电视的儿童管控面板里设一个。",
+  "电视还没有“使用情况访问”权限：时长无法统计，只有时段会生效。在电视的儿童管控面板里按提示授权。",
+  "受管应用",
+  "点一个应用设置它的模式、解锁方式和时长。",
+  "受限",
+  "不受限",
+  "全天",
+  "今天已用 {n} 分钟",
+  "答题加时 {n} 分钟",
+  "管控模式",
+  "只在时段内",
+  "答题后可用",
+  "时段 + 答题加时",
+  "解锁方式",
+  "家长密码",
+  "答题挑战",
+  "每天可用",
+  "不限",
+  "允许时段",
+  "添加时段",
+  "删除",
+  "已保存",
+  "分钟",
+  "电视上还没有可用的应用。",
+  "答题题型",
+  "勾选想让孩子练习的题型；每轮从这些题型里随机抽 5 题。",
+  "年龄阶段",
+  "幼儿园",
+  "小学",
+  "数学",
+  "古诗",
+  "词语",
+  "成语",
+  "水果",
+  "全局设置",
+  "做题加时",
+  "完全禁止",
+  "受限计时"
  ],
  "en": [
   "Screensaver",
@@ -575,7 +641,50 @@ const TEXTS = {
   "Connected Device",
   "Default",
   "Pick a device and the tile on the TV takes its look and its name; a name you typed is replaced.",
-  "Model"
+  "Model",
+  "Kids",
+  "Child Mode",
+  "Turn On Child Mode",
+  "When on, the marked apps follow their own hours and minutes; apps you do not mark are used as usual.",
+  "Child mode is off; every app is free to use.",
+  "No parental PIN yet: a child can turn child mode off on the TV. Set one on the TV's child mode panel first.",
+  "The TV has not granted usage access: minutes cannot be counted and only hours apply. Grant it from the child mode panel on the TV.",
+  "Managed Apps",
+  "Tap an app to set its mode, how it opens and its minutes.",
+  "Restricted",
+  "Free",
+  "All day",
+  "Used {n} min today",
+  "{n} min earned",
+  "Mode",
+  "Hours only",
+  "Quiz to use",
+  "Hours + quiz minutes",
+  "Opens with",
+  "Parental PIN",
+  "Quiz",
+  "Minutes a day",
+  "No limit",
+  "Allowed Hours",
+  "Add Hours",
+  "Delete",
+  "Saved",
+  "min",
+  "No apps are available on the TV yet.",
+  "Quiz topics",
+  "Tick the topics a child should practise; each round draws 5 questions from them.",
+  "Stage",
+  "Kindergarten",
+  "Primary school",
+  "Maths",
+  "Poems",
+  "Words",
+  "Idioms",
+  "Fruits",
+  "Settings",
+  "Quiz can add time",
+  "Blocked",
+  "Timed"
  ],
  "ru": [
   "Заставка",
@@ -702,7 +811,50 @@ const TEXTS = {
   "Подключённое устройство",
   "По умолчанию",
   "Выберите устройство — плитка на телевизоре примет его вид и название; введённое вами название заменится.",
-  "Модель"
+  "Модель",
+  "Дети",
+  "Детский режим",
+  "Включить детский режим",
+  "Когда он включён, отмеченные приложения работают по своим часам и минутам; остальные доступны как обычно.",
+  "Детский режим выключен; все приложения доступны.",
+  "PIN родителя не задан: ребёнок может выключить детский режим на телевизоре. Сначала задайте PIN на панели детского режима на телевизоре.",
+  "Телевизор не дал доступ к статистике: минуты не считаются, действуют только часы. Разрешите его на панели детского режима на телевизоре.",
+  "Управляемые приложения",
+  "Нажмите на приложение, чтобы задать режим, способ открытия и минуты.",
+  "Ограничено",
+  "Свободно",
+  "Весь день",
+  "Сегодня: {n} мин",
+  "Набрано: {n} мин",
+  "Режим",
+  "Только по часам",
+  "После вопросов",
+  "Часы + минуты за вопросы",
+  "Открывается",
+  "PIN родителя",
+  "Вопросы",
+  "Минут в день",
+  "Без ограничения",
+  "Разрешённые часы",
+  "Добавить часы",
+  "Удалить",
+  "Сохранено",
+  "мин",
+  "На телевизоре пока нет приложений.",
+  "Темы вопросов",
+  "Отметьте темы для тренировки; в раунде 5 случайных вопросов из них.",
+  "Этап",
+  "Детский сад",
+  "Начальная школа",
+  "Математика",
+  "Стихи",
+  "Слова",
+  "Идиомы",
+  "Фрукты",
+  "Настройки",
+  "Вопросы дают время",
+  "Заблокировано",
+  "Ограничено"
  ],
  "uk": [
   "Заставка",
@@ -829,7 +981,50 @@ const TEXTS = {
   "Підключений пристрій",
   "Типово",
   "Виберіть пристрій — плитка на телевізорі набуде його вигляду й назви; введену вами назву буде замінено.",
-  "Модель"
+  "Модель",
+  "Діти",
+  "Дитячий режим",
+  "Увімкнути дитячий режим",
+  "Коли він увімкнений, позначені застосунки працюють за своїми годинами й хвилинами; інші доступні як звичайно.",
+  "Дитячий режим вимкнено; усі застосунки доступні.",
+  "PIN батьків не задано: дитина може вимкнути дитячий режим на телевізорі. Спершу задайте PIN на панелі дитячого режиму на телевізорі.",
+  "Телевізор не надав доступ до статистики: хвилини не рахуються, діють лише години. Дозвольте його на панелі дитячого режиму на телевізорі.",
+  "Керовані застосунки",
+  "Торкніться застосунку, щоб задати режим, спосіб відкриття та хвилини.",
+  "Обмежено",
+  "Вільно",
+  "Увесь день",
+  "Сьогодні: {n} хв",
+  "Набрано: {n} хв",
+  "Режим",
+  "Лише за годинами",
+  "Після запитань",
+  "Години + хвилини за запитання",
+  "Відкривається",
+  "PIN батьків",
+  "Запитання",
+  "Хвилин на день",
+  "Без обмеження",
+  "Дозволені години",
+  "Додати години",
+  "Видалити",
+  "Збережено",
+  "хв",
+  "На телевізорі ще немає застосунків.",
+  "Теми запитань",
+  "Позначте теми для тренування; у раунді 5 випадкових запитань із них.",
+  "Етап",
+  "Дитсадок",
+  "Початкова школа",
+  "Математика",
+  "Вірші",
+  "Слова",
+  "Ідіоми",
+  "Фрукти",
+  "Налаштування",
+  "Запитання дають час",
+  "Заблоковано",
+  "Обмежено"
  ],
  "kk": [
   "Экран қорғаушы",
@@ -956,7 +1151,50 @@ const TEXTS = {
   "Қосылған құрылғы",
   "Әдепкі",
   "Құрылғыны таңдасаңыз, теледидардағы плитка оның түрі мен атауын алады; өзіңіз жазған атау ауыстырылады.",
-  "Модель"
+  "Модель",
+  "Балалар",
+  "Бала режимі",
+  "Бала режимін қосу",
+  "Қосылғанда, белгіленген қолданбалар өз уақыттары мен минуттары бойынша жұмыс істейді; белгіленбегендер әдеттегідей қолжетімді.",
+  "Бала режимі өшірулі; барлық қолданбалар еркін.",
+  "Ата-ана PIN коды орнатылмаған: бала теледидарда режимді өзі өшіре алады. Алдымен теледидардағы бала режимі тақтасында PIN орнатыңыз.",
+  "Теледидар пайдалану статистикасына рұқсат бермеді: минуттар есептелмейді, тек уақыттар әрекет етеді. Оны теледидардағы бала режимі тақтасында рұқсат етіңіз.",
+  "Басқарылатын қолданбалар",
+  "Қолданбаны түртіп, режимін, ашылу тәсілін және минуттарын орнатыңыз.",
+  "Шектелген",
+  "Еркін",
+  "Күні бойы",
+  "Бүгін: {n} мин",
+  "Жинағаны: {n} мин",
+  "Режим",
+  "Тек уақыт бойынша",
+  "Сұрақтардан кейін",
+  "Уақыт + сұрақ минуттары",
+  "Ашылу тәсілі",
+  "Ата-ана PIN коды",
+  "Сұрақтар",
+  "Күніне минут",
+  "Шектеусіз",
+  "Рұқсат етілген уақыт",
+  "Уақыт қосу",
+  "Жою",
+  "Сақталды",
+  "мин",
+  "Теледидарда әзірге қолданба жоқ.",
+  "Сұрақ тақырыптары",
+  "Бала жаттығатын тақырыптарды белгілеңіз; әр айналымда солардан 5 кездейсоқ сұрақ алынады.",
+  "Кезең",
+  "Балабақша",
+  "Бастауыш мектеп",
+  "Математика",
+  "Өлеңдер",
+  "Сөздер",
+  "Идиомалар",
+  "Жемістер",
+  "Параметрлер",
+  "Сұрақтар уақыт қосады",
+  "Блокталған",
+  "Шектелген"
  ]
 };
 const LANGS = Object.keys(TEXTS);
@@ -1024,8 +1262,8 @@ async function api(path, body) {
 function take(next) { state = next; stateJson = ''; render(); }
 
 /* Tabs. The tab is kept in the address (#home) and on the phone, and each tab keeps its own scroll. */
-const TABS = ['home', 'looks', 'more'];
-const TITLES = { home: 'tab_home', looks: 'looks_title', more: 'tab_more' };
+const TABS = ['home', 'kids', 'looks', 'more'];
+const TITLES = { home: 'tab_home', kids: 'tab_kids', looks: 'looks_title', more: 'tab_more' };
 // The four tabs of 1.46 and 1.47's first builds.
 const OLD_TABS = { wallpaper: 'looks', screensaver: 'looks' };
 const scrolls = {};
@@ -1231,6 +1469,180 @@ function renderInputs() {
     };
     row.append(txt, sw); list.appendChild(row);
   }
+}
+
+/*
+ * Child mode: every app is free, blocked (a child can never open it) or timed (counted against a
+ * global daily time shared by all timed apps, within one set of allowed hours). The TV enforces
+ * it; this page sets the categories and the global time, hours and quiz switch.
+ */
+function kidsRule(app) {
+  const k = state.kids || {};
+  return (k.categories || {})[app.key] || 'free';
+}
+function renderKids() {
+  const k = state.kids || {};
+  $('#kidsOn').checked = !!k.enabled;
+  const warn = !k.usageStats ? t('kids_no_usage') : '';
+  const foot = $('#kidsFoot'); foot.textContent = k.enabled ? warn : t('kids_hint_off'); foot.hidden = !foot.textContent;
+
+  // The global daily time, the hours timed apps may run, and the quiz switch.
+  const settings = $('#kidsSettings'); settings.replaceChildren();
+  const saveSettings = async patch => {
+    try { take(await api('api/kids/settings', patch)); toast(t('toast_kids_saved')); }
+    catch (e) { toast(t('toast_set_fail')); }
+  };
+  settings.appendChild(el('h2', '', t('kids_rule_quota')));
+  const ql = el('div', 'list'); ql.setAttribute('role', 'radiogroup'); ql.setAttribute('aria-label', t('kids_rule_quota'));
+  for (const n of [0, 5, 15, 30, 60, 90, 120]) {
+    const b = el('button', 'item'); b.setAttribute('role', 'radio');
+    b.appendChild(el('span', 'txt', n ? `${n} ${t('kids_min_unit')}` : t('kids_quota_none')));
+    b.insertAdjacentHTML('beforeend', ICON.tick);
+    const on = String(k.quota) === String(n);
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+    b.onclick = () => { if (!on) saveSettings({ quota: String(n) }); };
+    ql.appendChild(b);
+  }
+  settings.appendChild(ql);
+  settings.appendChild(el('h2', '', t('kids_rule_slots')));
+  const sl = el('div', 'list');
+  const slots = k.slots || [];
+  const renderSlots = () => {
+    sl.replaceChildren();
+    if (!slots.length) { sl.appendChild(el('div', 'item', t('kids_all_day'))).style.color = 'var(--secondary)'; }
+    slots.forEach((slot, i) => {
+      const r = el('div', 'item');
+      r.appendChild(el('span', 'txt', slot));
+      const del = el('button', 'link', t('kids_slot_remove')); del.style.color = 'var(--danger)';
+      del.onclick = () => { slots.splice(i, 1); saveSettings({ slots: JSON.stringify(slots) }); renderSlots(); };
+      r.appendChild(del); sl.appendChild(r);
+    });
+    const add = el('form', 'item field');
+    const from = el('input'); from.type = 'time'; from.value = '08:00'; from.step = '300'; from.setAttribute('aria-label', t('kids_slot_add'));
+    const to = el('input'); to.type = 'time'; to.value = '20:00'; to.step = '300'; to.setAttribute('aria-label', t('kids_slot_add'));
+    const addBtn = el('button', 'link', t('kids_slot_add'));
+    add.append(from, to, addBtn);
+    add.onsubmit = e => {
+      e.preventDefault();
+      if (!from.value || !to.value || from.value === to.value) return;
+      const slot = `${from.value}-${to.value}`;
+      if (slots.includes(slot)) return;
+      slots.push(slot); slots.sort(); saveSettings({ slots: JSON.stringify(slots) }); renderSlots();
+    };
+    sl.appendChild(add);
+  };
+  renderSlots();
+  settings.appendChild(sl);
+  const row = el('label', 'item');
+  row.appendChild(el('span', 'txt', t('kids_quiz_toggle')));
+  const sw = el('input', 'switch'); sw.type = 'checkbox'; sw.checked = !!k.quizEnabled;
+  sw.setAttribute('aria-label', t('kids_quiz_toggle'));
+  sw.onchange = () => { sw.disabled = true; saveSettings({ quiz_enabled: sw.checked ? '1' : '0' }); sw.disabled = false; };
+  row.appendChild(sw); settings.appendChild(row);
+
+  // A round draws from the topics ticked here, so the child is never asked to pick one on the TV.
+  const topics = k.quizTopics && k.quizTopics.length ? k.quizTopics : [k.quizBank || 'kg_math'];
+  const primary = topics[0].startsWith('primary_');
+  const subjects = new Set(topics.map(x => x.split('_')[1]));
+  const saveTopics = async list => {
+    try {
+      take(await api('api/kids/quiz', { topics: list.join(',') }));
+      renderKids(); toast(t('toast_kids_saved'));
+    } catch (e) { toast(t('toast_set_fail')); }
+  };
+
+  const stage = $('#kidsStage'); stage.replaceChildren();
+  for (const [key, labelKey] of [['kg', 'kids_stage_kg'], ['primary', 'kids_stage_primary']]) {
+    const current = primary ? 'primary' : 'kg';
+    const b = el('button', 'item'); b.setAttribute('role', 'radio');
+    b.appendChild(el('span', 'txt', t(labelKey)));
+    b.insertAdjacentHTML('beforeend', ICON.tick);
+    b.setAttribute('aria-checked', current === key ? 'true' : 'false');
+    b.onclick = () => {
+      if (current === key) return;
+      const next = [...subjects].map(s => `${key}_${s}`);
+      saveTopics(next.length ? next : [`${key}_math`]);
+    };
+    stage.appendChild(b);
+  }
+
+  const quiz = $('#kidsQuiz'); quiz.replaceChildren();
+  for (const [subject, labelKey] of [
+    ['math', 'kids_subject_math'], ['poem', 'kids_subject_poem'], ['words', 'kids_subject_words'],
+    ['idiom', 'kids_subject_idiom'], ['fruit', 'kids_subject_fruit'],
+  ]) {
+    const on = subjects.has(subject);
+    const b = el('button', 'item'); b.setAttribute('role', 'checkbox');
+    b.appendChild(el('span', 'txt', t(labelKey)));
+    b.insertAdjacentHTML('beforeend', ICON.tick);
+    b.setAttribute('aria-checked', on ? 'true' : 'false');
+    b.onclick = () => {
+      // One topic always stays ticked: a round with nothing to draw from cannot start.
+      if (on && subjects.size === 1) return;
+      const next = on ? [...subjects].filter(s => s !== subject) : [...subjects, subject];
+      saveTopics(next.map(s => `${primary ? 'primary' : 'kg'}_${s}`));
+    };
+    quiz.appendChild(b);
+  }
+
+  const list = $('#kidsApps'); list.replaceChildren();
+  const apps = (state.apps || []).filter(a => !a.source);
+  if (!apps.length) { list.appendChild(el('div', 'item', t('kids_no_apps'))).style.color = 'var(--secondary)'; return; }
+  for (const a of apps) {
+    const cat = kidsRule(a);
+    const used = (k.usage || {})[a.key] || 0;
+    const row = el('button', 'item arow');
+    const txt = el('span', 'txt', a.label);
+    if (cat === 'timed') txt.appendChild(el('span', 'sub', t('kids_used', { n: used })));
+    row.append(tileImg(a), txt);
+    row.appendChild(el('span', 'val', t(cat === 'blocked' ? 'kids_blocked' : cat === 'timed' ? 'kids_timed' : 'kids_free')));
+    row.insertAdjacentHTML('beforeend', ICON.chev);
+    row.onclick = () => kidsSheet(a);
+    list.appendChild(row);
+  }
+}
+$('#kidsOn').onchange = async () => {
+  const sw = $('#kidsOn'); const on = sw.checked; sw.disabled = true;
+  try { take(await api('api/kids/enabled', { on: on ? '1' : '0' })); toast(t('toast_tv_updated')); }
+  catch (e) { sw.checked = !on; toast(t('toast_set_fail')); }
+  sw.disabled = false;
+};
+
+/* One app's category: free, blocked, or timed with the minutes it has used today. */
+function kidsSheet(a) {
+  openSheet(body => {
+    const paint = () => {
+      const k = state.kids || {};
+      const cat = kidsRule(a);
+      const used = (k.usage || {})[a.key] || 0;
+      body.replaceChildren();
+
+      const pic = el('div', 'pic'); const img = el('img');
+      img.src = `${base}tile/${encodeURIComponent(a.key)}?v=${a.stamp}`; pic.appendChild(img); body.appendChild(pic);
+      body.appendChild(el('h3', '', a.label));
+      if (cat === 'timed') body.appendChild(el('p', 'meta', t('kids_used', { n: used })));
+
+      const save = async category => {
+        try {
+          const next = await api('api/kids/category', { app: a.key, category });
+          if (!next.saved) throw new Error('not saved');
+          take(next); paint(); toast(t('toast_kids_saved'));
+        } catch (e) { toast(t('toast_set_fail')); paint(); }
+      };
+
+      const tl = el('div', 'list'); body.appendChild(tl);
+      for (const [key, labelKey] of [['free', 'kids_free'], ['blocked', 'kids_blocked'], ['timed', 'kids_timed']]) {
+        const b = el('button', 'item'); b.setAttribute('role', 'radio');
+        b.appendChild(el('span', 'txt', t(labelKey))); b.insertAdjacentHTML('beforeend', ICON.tick);
+        b.setAttribute('aria-checked', cat === key ? 'true' : 'false');
+        b.onclick = () => { if (cat !== key) save(key); };
+        tl.appendChild(b);
+      }
+      const c = el('div', 'list'); c.style.marginTop = '12px'; body.appendChild(c);
+      action(c, t('cancel'), 'tint', closeSheet).style.fontWeight = '600';
+    };
+    paint();
+  });
 }
 document.querySelectorAll('#focus [data-style]').forEach(b => b.onclick = async () => {
   if (b.dataset.style === state.focusStyle) return;
@@ -1626,6 +2038,7 @@ function render() {
   renderScreensaver();
   renderMore();
   renderInputs();
+  renderKids();
   renderArrange(false);
 }
 

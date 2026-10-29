@@ -51,6 +51,7 @@ import app.orchard.tv.apps.SourceLooks
 import app.orchard.tv.apps.TileArtFactory
 import app.orchard.tv.guard.GuardSetup
 import app.orchard.tv.guard.HomeGuardService
+import app.orchard.tv.kids.KidsMode
 import app.orchard.tv.ui.home.HomeScreen
 import app.orchard.tv.ui.home.LiveFilm
 import app.orchard.tv.ui.theme.LocalReducedMotion
@@ -175,6 +176,7 @@ class MainActivity : ComponentActivity() {
         SourceLooks.init(this)
         AppNames.init(this)
         AerialSettings.init(this)
+        KidsMode.init(this)
         Sounds.init(this)
         val reducedMotion = Settings.Global.getFloat(contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
 
@@ -235,6 +237,7 @@ class MainActivity : ComponentActivity() {
         }
         if (fresh && firstStartSinceBoot()) openBootSource("boot")
         if (intent.getBooleanExtra(EXTRA_WOKE, false)) openBootSource("brought back on wake")
+        showBlockedFrom(intent)
         if (fromLocked) {
             // This window already went through onStart and onResume while locked (both returned
             // early) and the system will not call them again unless it stops and starts the
@@ -566,6 +569,11 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         if (locked) return
         DiagLog.i("onNewIntent ${intent.action}")
+        // A child app Home Guard took Aerial back from: Home says why, not Home-on-Home.
+        if (intent.getStringExtra(EXTRA_BLOCKED) != null) {
+            showBlockedFrom(intent)
+            return
+        }
         if (intent.getBooleanExtra(EXTRA_WOKE, false)) openBootSource("brought back on wake")
         if (intent.action == ACTION_PREVIEW_SCREENSAVER) {
             idleHandler.post { startScreensaver(asked = true) }
@@ -621,7 +629,9 @@ class MainActivity : ComponentActivity() {
             else cm.registerNetworkCallback(NetworkRequest.Builder().build(), networkCallback)
         }
         // Apps can change while Aerial is in the background without it hearing about it.
-        vm.reload()
+        // reloadIfPackagesChanged above covers that with the change counter; reloading here as well
+        // re-decoded every tile right after Home came back from an app, which showed as a hitch.
+        if (!vm.loaded) vm.reload()
         Wallpapers.refreshDailyIfStale()
         Wallpapers.rotateIfDue()
         Weather.refreshIfStale()
@@ -677,9 +687,21 @@ class MainActivity : ComponentActivity() {
 
     /** Opens an app, growing it out of its tile. */
     private fun launch(app: AppEntry, bounds: Rect?) {
+        // The child mode's quiz tile is not an app: it opens a round of questions.
+        if (app.packageName == KidsMode.QUIZ_KEY) {
+            vm.openQuiz(null)
+            return
+        }
         // The TV's settings app behind the parental PIN as well, not only Control Center's button.
         if (AerialSettings.locked && SystemProbe.isSettingsApp(this, app.packageName)) {
             vm.whenUnlocked { launch(app, bounds) }
+            return
+        }
+        // Child mode: an app the child may not open, or whose time is up, does not start at all.
+        // Saying why here at once is what a second's worth of cold start otherwise costs: the app
+        // opened, Home Guard took the child out of it again, and the same tap repeated the cycle.
+        KidsMode.blockReason(this, app.packageName)?.let { reason ->
+            vm.onBlocked(app.packageName, reason)
             return
         }
         openedAppSinceHome = true
@@ -709,6 +731,13 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /** Home Guard brought Aerial back because a child may not be in that app: Home says why. */
+    private fun showBlockedFrom(intent: Intent) {
+        val pkg = intent.getStringExtra(EXTRA_BLOCKED) ?: return
+        intent.removeExtra(EXTRA_BLOCKED)
+        vm.onBlocked(pkg, KidsMode.Block.of(intent.getStringExtra(EXTRA_KIDS_BLOCK)))
+    }
+
     companion object {
         /** The system's dream did not show when asked (see dreamCheck); for this process. */
         private var dreamFails = false
@@ -729,6 +758,12 @@ class MainActivity : ComponentActivity() {
 
         /** Set by Home Guard when it brings Aerial back after standby or a boot. */
         const val EXTRA_WOKE = "app.orchard.tv.WOKE"
+
+        /** Set by Home Guard when the child mode keeps the child out of an app, with its package. */
+        const val EXTRA_BLOCKED = "app.orchard.tv.BLOCKED"
+
+        /** With [EXTRA_BLOCKED]: why the app is blocked, see KidsMode.Block. */
+        const val EXTRA_KIDS_BLOCK = "app.orchard.tv.KIDS_BLOCK"
 
         /** How long after the key that woke a screensaver other keys are still taken as waking it. */
         const val WAKE_QUIET_MS = 400L

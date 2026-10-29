@@ -27,6 +27,7 @@ import android.view.accessibility.AccessibilityEvent
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import app.orchard.tv.MainActivity
+import app.orchard.tv.kids.KidsMode
 import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.system.SystemProbe
 
@@ -119,6 +120,42 @@ class HomeGuardService : AccessibilityService() {
 
     /** The usage-stats time of the move to the front the foreground check last answered. */
     private var foregroundTakenAt = Long.MIN_VALUE / 2
+
+    /**
+     * Child mode's clock. Window changes catch an app the child may not open at once; a limit that
+     * runs out while the app is in front raises none, so the app in front is looked at again every
+     * ten seconds. Usage stats also say which Timed app is in front, which is the case to check
+     * first: a video that plays on raises no window change for an hour, and the minutes it uses
+     * only come from there. Where usage stats are not granted, [KidsMode.blockReason] only answers
+     * "not allowed", and a limit that runs out is caught when the child next opens an app.
+     */
+    private val kidsWatch = object : Runnable {
+        override fun run() {
+            handler.postDelayed(this, KIDS_POLL_MS)
+            if (screenOff || !GuardSetup.isUserUnlocked(this@HomeGuardService)) return
+            if (!KidsMode.restricted) return
+            val known = lastWindow?.first
+            // Aerial itself resumed: nothing of the child's is in front, and no minutes run.
+            if (aerialResumed && known == packageName) return
+            val front = if (known != null && known != packageName) {
+                known
+            } else {
+                // Aerial is not resumed but no window change said what took the front: the last few
+                // seconds of usage events name it, which is fresh and cheap; a video that has been
+                // playing since before them only shows in the day's reading.
+                foreground()?.first?.first ?: KidsMode.timedInFront(this@HomeGuardService) ?: return
+            }
+            if (front == packageName) return
+            val reason = KidsMode.blockReason(this@HomeGuardService, front) ?: return
+            if (SystemClock.uptimeMillis() - broughtBackAt < 1_000) return
+            Log.i(TAG, "child mode: $front is $reason; bringing Aerial back")
+            goHome(blocked = front, block = reason)
+        }
+    }
+
+    /** Whether [pkg] is what the child mode keeps out; used for window changes, see kidsWatch. */
+    private fun kidsBlocked(pkg: String): KidsMode.Block? =
+        if (pkg == packageName) null else KidsMode.blockReason(this, pkg)
 
     /** The newest activity moved to the front in the last few seconds, with its time; null if none. */
     private fun foreground(lookbackMs: Long = FOREGROUND_LOOKBACK_MS): Pair<Pair<String, String>, Long>? = runCatching {
@@ -323,6 +360,18 @@ class HomeGuardService : AccessibilityService() {
         screenOff = getSystemService<PowerManager>()?.isInteractive == false
         updateKeyFilter()
         watchCecInput()
+        // Child mode's state, and its clock; the window changes below enforce the rest.
+        AerialSettings.init(this)
+        KidsMode.init(this)
+        if (KidsMode.enabled) {
+            Log.i(
+                TAG,
+                if (KidsMode.canCountTime(this)) "child mode on; usage stats granted"
+                else "child mode on, but usage stats are NOT granted: the daily time cannot run out",
+            )
+        }
+        handler.removeCallbacks(kidsWatch)
+        handler.postDelayed(kidsWatch, KIDS_POLL_MS)
         volumeSeen = volumeNow()
         registerReceiver(screenOn, IntentFilter(Intent.ACTION_SCREEN_ON).apply { addAction(Intent.ACTION_SCREEN_OFF) })
         @Suppress("DEPRECATION")
@@ -750,6 +799,16 @@ class HomeGuardService : AccessibilityService() {
             goHome(woke = SystemClock.elapsedRealtime() - screenOnAt < WAKE_WINDOW_MS)
             return
         }
+        // Child mode: an app the child may not open, or whose time is up, goes straight back to
+        // Home, and Home says why.
+        if (isActivity(pkg, cls)) {
+            val reason = kidsBlocked(pkg)
+            if (reason != null && SystemClock.uptimeMillis() - broughtBackAt >= 1_000) {
+                Log.i(TAG, "child mode: $pkg is $reason; bringing Aerial back")
+                goHome(blocked = pkg, block = reason)
+                return
+            }
+        }
         updateKeyFilter()
         // Leaving the stock launcher for a real app ends the visit: Home goes to Aerial again.
         if (allowed && pkg != packageName && isApp(pkg)) allowStockUntil = 0L
@@ -830,7 +889,7 @@ class HomeGuardService : AccessibilityService() {
     /** When goHome last started Aerial. */
     private var broughtBackAt = Long.MIN_VALUE / 2
 
-    private fun goHome(woke: Boolean = false) {
+    private fun goHome(woke: Boolean = false, blocked: String? = null, block: KidsMode.Block? = null) {
         if (!GuardSetup.isUserUnlocked(this)) return
         // Starting an activity can light the screen: on OPPO K9 the TV came back on by itself a few
         // seconds into standby (issue #22). The screen-on check takes over at wake instead.
@@ -847,7 +906,10 @@ class HomeGuardService : AccessibilityService() {
         }
         broughtBackAt = SystemClock.uptimeMillis()
         runCatching {
-            startActivity(MainActivity.bringBackIntent(this).putExtra(MainActivity.EXTRA_WOKE, woke))
+            val intent = MainActivity.bringBackIntent(this).putExtra(MainActivity.EXTRA_WOKE, woke)
+            // The child mode says on Home why the app was taken away.
+            if (blocked != null) intent.putExtra(MainActivity.EXTRA_BLOCKED, blocked).putExtra(MainActivity.EXTRA_KIDS_BLOCK, block?.key)
+            startActivity(intent)
         }.onFailure { Log.w(TAG, "could not bring Aerial Home to the front", it) }
     }
 
@@ -860,6 +922,8 @@ class HomeGuardService : AccessibilityService() {
         private const val DEAF_AFTER_MS = 20_000L
         private const val FOREGROUND_POLL_MS = 1_000L
         private const val FOREGROUND_LOOKBACK_MS = 10_000L
+        /** How often the child mode looks at the app in front; see kidsWatch. */
+        private const val KIDS_POLL_MS = 3_000L
         /** How far back to look for the front when no window has been seen; see frontByUsage. */
         private const val UNKNOWN_FRONT_LOOKBACK_MS = 6 * 60 * 60 * 1000L
         private const val DOUBLE_HOME_MS = 400L

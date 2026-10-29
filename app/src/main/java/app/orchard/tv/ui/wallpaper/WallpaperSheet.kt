@@ -60,6 +60,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import app.orchard.tv.R
+import app.orchard.tv.kids.KidsMode
 import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.settings.FocusStyle
 import app.orchard.tv.settings.UiSounds
@@ -101,6 +102,9 @@ fun WallpaperSheet(
     onHiddenApps: () -> Unit,
     onStartScreensaver: () -> Unit,
     onPin: (on: Boolean) -> Unit,
+    onKidsMode: (on: Boolean) -> Unit,
+    onKidsManage: () -> Unit,
+    onKidsQuiz: () -> Unit,
 ) {
     val context = LocalContext.current
     var phoneUrl by remember { mutableStateOf<String?>(null) }
@@ -268,8 +272,31 @@ fun WallpaperSheet(
                     Spacer(Modifier.height(10.dp))
                     Group(stringResource(R.string.st_pin_hint)) { note ->
                         SettingRow(R.string.st_pin, null, note, first = true) {
+                            // The password is always set (313074 at first); this row changes it.
                             // The last row that takes focus: bring the note under it into view too.
-                            PinChoice(onPin, onFocused = { scope.launch { scroll.animateScrollTo(scroll.maxValue) } })
+                            ActionChip(
+                                stringResource(R.string.st_pin_change), Glyph.ChevronRight,
+                                { onPin(true) },
+                                onFocused = { scope.launch { scroll.animateScrollTo(scroll.maxValue) } },
+                            )
+                        }
+                    }
+
+                    // Child mode: the same parental password holds it, and it only acts while the
+                    // password is locked, so entering it shows the parent every app again.
+                    Spacer(Modifier.height(10.dp))
+                    Group(stringResource(R.string.kids_hint)) { note ->
+                        SettingRow(R.string.kids_title, null, note, first = true) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Chip(stringResource(R.string.kids_on), on = KidsMode.enabled) { if (!KidsMode.enabled) onKidsMode(true) }
+                                Chip(stringResource(R.string.kids_off), on = !KidsMode.enabled) { if (KidsMode.enabled) onKidsMode(false) }
+                            }
+                        }
+                        SettingRow(R.string.kids_apps, null, note) {
+                            ActionChip(stringResource(R.string.kids_open), Glyph.ChevronRight, onKidsManage)
+                        }
+                        SettingRow(R.string.kids_quiz, null, note) {
+                            ActionChip(stringResource(R.string.kids_start), Glyph.ChevronRight, onKidsQuiz)
                         }
                     }
                     Spacer(Modifier.height(24.dp))
@@ -456,18 +483,6 @@ private fun <T> Choices(
     }
 }
 
-/** Parental PIN on or off; either way goes through the PIN pad (issue #10). */
-@Composable
-private fun PinChoice(onPin: (on: Boolean) -> Unit, onFocused: () -> Unit) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        listOf(false to R.string.st_pin_off, true to R.string.st_pin_on).forEach { (on, label) ->
-            Chip(stringResource(label), on = AerialSettings.pinSet == on, onFocused = onFocused) {
-                if (AerialSettings.pinSet != on) onPin(on)
-            }
-        }
-    }
-}
-
 /** Where the weather is for and what it is now. The city is set on the phone page. */
 @Composable
 private fun WeatherValue() {
@@ -518,10 +533,11 @@ private fun Chip(label: String, on: Boolean, onFocused: (() -> Unit)? = null, on
     }
 }
 
-/** A pill that does something rather than choosing a value: white when focused, a glyph after its label. */
+/** A pill that does something, with the chevron that says so. */
 @Composable
-private fun ActionChip(label: String, glyph: Glyph, onClick: () -> Unit) {
+private fun ActionChip(label: String, glyph: Glyph, onClick: () -> Unit, onFocused: (() -> Unit)? = null) {
     Pressable(onClick = onClick, focusedScale = 1.06f) { state ->
+        if (onFocused != null) LaunchedEffect(state.focused) { if (state.focused) onFocused() }
         val bg by animateColorAsState(if (state.focused) Palette.Focus else Palette.FillStrong, tween(140, easing = Motion.EaseOut), label = "action-bg")
         val fg = if (state.focused) Palette.OnFocus else Palette.Label
         Row(

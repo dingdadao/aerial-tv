@@ -90,19 +90,25 @@ object AerialSettings {
     var backStartsScreensaver by mutableStateOf(true); private set
 
     /**
-     * Parental PIN (issue #10): asked before TV settings open and before hidden apps come back.
-     * Kept as a SHA-256 hash. One right entry holds for a while, until Home is pressed.
+     * The global parent password (6 digits, default 313074): asked before TV settings open, before
+     * hidden apps come back, and before the child-mode settings / time-up override. Replaces the
+     * old 4-digit PIN. Kept as a SHA-256 hash. One right entry holds for a while, until Home is
+     * pressed. The password is always set; [choosePin] with null resets it to the default.
      */
     var pinSet by mutableStateOf(false); private set
-
-    /**
-     * The PIN is four presses of the arrow keys rather than four digits: quicker on a remote with
-     * no number keys, and a child watching sees nothing on screen to copy (issue #368).
-     */
-    var pinArrows by mutableStateOf(false); private set
     private var pinHash: String? = null
     private var unlockedUntil = 0L
     private const val UNLOCK_MS = 10 * 60 * 1000L
+    const val DEFAULT_PASSWORD = "313074"
+
+    /**
+     * Bumped whenever the PIN is entered, Home is pressed or the PIN is changed: the moments
+     * [locked] changes for a reason, when Home has to be arranged again for the child mode.
+     */
+    var unlockTick by mutableStateOf(0); private set
+
+    /** How long until the PIN locks again; 0 when it is locked already. */
+    val unlockRemainingMs: Long get() = (unlockedUntil - SystemClock.elapsedRealtime()).coerceAtLeast(0)
 
     /**
      * Minutes of no input on Home before Aerial's screensaver starts (issue #66). The firmware's own
@@ -128,9 +134,13 @@ object AerialSettings {
         pinnedSources = prefs.getStringSet("pinned_sources", null)?.toSet() ?: emptySet()
         bootSource = prefs.getString("boot_source", null)
         bootApp = prefs.getString("boot_app", null)
-        pinHash = prefs.getString("pin_hash", null)
-        pinSet = pinHash != null
-        pinArrows = prefs.getBoolean("pin_arrows", false)
+        pinHash = prefs.getString("parent_pw_hash", null)
+        if (pinHash == null) {
+            // New install, or a home still on the old PIN: the parent password starts at 313074.
+            pinHash = hash(DEFAULT_PASSWORD)
+            prefs.edit { putString("parent_pw_hash", pinHash) }
+        }
+        pinSet = true
         oneRowHome = prefs.getBoolean("one_row_home", true)
         peekNextRow = prefs.getBoolean("peek_next_row", true)
         clockRight = prefs.getBoolean("clock_right", false)
@@ -168,18 +178,25 @@ object AerialSettings {
     fun unlock(pin: String): Boolean {
         if (hash(pin) != pinHash) return false
         unlockedUntil = SystemClock.elapsedRealtime() + UNLOCK_MS
+        unlockTick++
         return true
     }
 
-    fun relock() { unlockedUntil = 0L }
+    fun relock() {
+        unlockedUntil = 0L
+        unlockTick++
+    }
 
-    /** Sets the PIN, digits or [arrows] (U, D, L, R), or turns it off with null. */
+    /**
+     * Sets the 6-digit parent password, or with null resets it to the default [DEFAULT_PASSWORD]
+     * (a parent who forgot it). [arrows] is kept for callers from the old PIN UI and ignored.
+     */
     fun choosePin(pin: String?, arrows: Boolean = false) {
-        pinHash = pin?.let(::hash)
-        pinSet = pinHash != null
-        pinArrows = pin != null && arrows
-        unlockedUntil = if (pin != null) SystemClock.elapsedRealtime() + UNLOCK_MS else 0L
-        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString("pin_hash", pinHash); putBoolean("pin_arrows", pinArrows) }
+        pinHash = hash(pin ?: DEFAULT_PASSWORD)
+        pinSet = true
+        unlockedUntil = SystemClock.elapsedRealtime() + UNLOCK_MS
+        unlockTick++
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString("parent_pw_hash", pinHash) }
     }
 
     private fun hash(pin: String): String =

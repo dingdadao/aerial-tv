@@ -61,6 +61,7 @@ import app.orchard.tv.apps.CustomIcons
 import app.orchard.tv.apps.SourceDevice
 import app.orchard.tv.apps.SourceLooks
 import app.orchard.tv.apps.Folder
+import app.orchard.tv.kids.KidsMode
 import app.orchard.tv.ui.components.Pressable
 import app.orchard.tv.ui.components.consumeTaps
 import app.orchard.tv.ui.components.dismissOnTap
@@ -211,6 +212,7 @@ fun AppMenu(
                     title, style = Type.Headline, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 6.dp),
                 )
+                val quiz = shownApp.key == KidsMode.QUIZ_KEY
                 when (page) {
                     MenuPage.Main -> when {
                         folder != null -> {
@@ -238,11 +240,12 @@ fun AppMenu(
                                 if (CustomIcons.has(shownApp.key)) {
                                     MenuRow(Glyph.Photo, stringResource(R.string.menu_reset_icon), { onResetIcon(shownApp.key) })
                                 }
-                                if (shownApp.shortcut == null) MenuRow(Glyph.Info, stringResource(R.string.menu_info), { onInfo(shownApp.key) })
+                                // The quiz tile is not an app: no package to show info for.
+                                if (shownApp.shortcut == null && !quiz) MenuRow(Glyph.Info, stringResource(R.string.menu_info), { onInfo(shownApp.key) })
                             }
                             // What the TV starts on, for homes that switch it on to watch television.
                             val boots = shownApp.source?.let { it.id == AerialSettings.bootSource } ?: (shownApp.key == AerialSettings.bootApp)
-                            MenuRow(
+                            if (!quiz) MenuRow(
                                 if (boots) Glyph.Check else Glyph.Power,
                                 stringResource(if (boots) R.string.menu_boot_off else R.string.menu_boot_on),
                                 { onBootTarget(shownApp.key) },

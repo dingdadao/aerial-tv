@@ -231,6 +231,56 @@ object TileArtFactory {
     }
 
     /**
+     * The child mode's quiz tile: an answer sheet with a question mark on it, drawn in the same
+     * look as the glyph tiles. It used to take the children's-mode figure, so Home showed that
+     * pink figure twice and the quiz read as a second copy of the stock launcher's kids entry.
+     */
+    fun forQuiz(): TileArt {
+        val back = colorTile(0xFFFFC24A.toInt(), 0xFFE0741A.toInt())
+        val g = H * 0.60f
+        val w = g * 0.78f
+        val left = (W - w) / 2f
+        val top = (H - g) / 2f
+        val sheet = RectF(left, top, left + w, top + g)
+        val corner = g * 0.10f
+        val fore = layer {
+            // The soft shadow the glyphs sit on, here under the sheet.
+            drawRoundRect(RectF(sheet.left, sheet.top + g * 0.05f, sheet.right, sheet.bottom + g * 0.05f), corner, corner,
+                Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x14000000 })
+            drawRoundRect(RectF(sheet.left, sheet.top + g * 0.025f, sheet.right, sheet.bottom + g * 0.025f), corner, corner,
+                Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x22000000 })
+            drawRoundRect(sheet, corner, corner, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() })
+            val cx = left + w / 2f
+            val cy = top + g * 0.34f
+            val r = g * 0.15f
+            val ink = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = 0xFFE0741A.toInt()
+                style = Paint.Style.STROKE
+                strokeWidth = g * 0.10f
+                strokeCap = Paint.Cap.ROUND
+            }
+            // The hook: a round top that comes down on the right, then turns back to the middle.
+            val hook = android.graphics.Path().apply {
+                moveTo(cx - r, cy)
+                cubicTo(cx - r, cy - 1.8f * r, cx + r, cy - 1.8f * r, cx + r, cy)
+                cubicTo(cx + r, cy + 0.8f * r, cx, cy + 0.8f * r, cx, cy + 1.1f * r)
+            }
+            drawPath(hook, ink)
+            // Its dot, apart from the stroke as in the symbol.
+            drawCircle(cx, cy + 1.95f * r, g * 0.055f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFE0741A.toInt() })
+            // Two ruled lines below: the sheet is a sheet of answers.
+            val ruled = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = 0x66E0741A
+                style = Paint.Style.STROKE
+                strokeWidth = g * 0.045f
+                strokeCap = Paint.Cap.ROUND
+            }
+            for (y in listOf(top + g * 0.82f, top + g * 0.91f)) drawLine(left + w * 0.20f, y, left + w * 0.80f, y, ruled)
+        }
+        return finish(back, fore)
+    }
+
+    /**
      * Weather gets its colors, as on tvOS: a warm sun half behind a white cloud. Everything else is
      * one white glyph.
      */

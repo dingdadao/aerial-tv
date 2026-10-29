@@ -2,6 +2,7 @@ package app.orchard.tv.apps
 
 import android.content.Context
 import androidx.core.content.edit
+import app.orchard.tv.kids.KidsMode
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -44,6 +45,9 @@ class LayoutStore(context: Context) {
         val fresh = all.filter { it.key !in known }.sortedWith(Defaults.comparator).map { it.key }
         // Keep keys of apps that are only temporarily missing (e.g. updating) so they return in place.
         order = order + fresh
+        // The quiz tile is new on a Home arranged before the child mode had one: it opens the grid
+        // the first time, as it did when Home put it there itself, and from then on it moves.
+        if (KidsMode.QUIZ_KEY in fresh) order = listOf(KidsMode.QUIZ_KEY) + order.filter { it != KidsMode.QUIZ_KEY }
         save()
         val contents = folders.mapValues { (_, f) -> f.apps.mapNotNull(byKey::get).filter { it.key !in hidden } }
         val home = order.mapNotNull { key ->
@@ -214,7 +218,9 @@ private object Defaults {
     )
 
     val comparator = compareBy<AppEntry>(
-        { preferred.indexOf(it.key).let { i -> if (i < 0) Int.MAX_VALUE else i } },
+        // The child mode's quiz tile opens first, before the streaming apps: it is what a child
+        // sees on Home, and it moves like any other tile afterwards.
+        { if (it.key == KidsMode.QUIZ_KEY) -1 else preferred.indexOf(it.key).let { i -> if (i < 0) Int.MAX_VALUE else i } },
         { if (it.key in utilities || it.key.startsWith("com.android.")) 1 else 0 },
         { utilities.indexOf(it.key) },
         { it.label.lowercase() },

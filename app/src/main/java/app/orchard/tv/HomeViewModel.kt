@@ -1,6 +1,7 @@
 package app.orchard.tv
 
 import android.app.Application
+import android.content.ComponentName
 import android.os.Build
 import android.os.SystemClock
 import androidx.compose.runtime.getValue
@@ -24,6 +25,7 @@ import app.orchard.tv.apps.TileArt
 import app.orchard.tv.apps.TileArtFactory
 import app.orchard.tv.apps.folderEntry
 import app.orchard.tv.apps.sourceEntry
+import app.orchard.tv.kids.KidsMode
 import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.system.Brightness
 import app.orchard.tv.system.DiagLog
@@ -49,6 +51,14 @@ sealed interface Overlay {
     data class Folder(val id: String) : Overlay
     data object HiddenApps : Overlay
     data object Wallpaper : Overlay
+    /** The parental child mode's app list; opened behind the PIN. */
+    data object Kids : Overlay
+    /** A round of questions for [appKey], from its blocked screen or the quiz tile; null picks the app first. */
+    data class Quiz(val appKey: String?) : Overlay
+    /** Why a child was taken out of the app: it is blocked, outside its hours, or its time is up. */
+    data class TimeUp(val appLabel: String?, val appKey: String, val block: KidsMode.Block) : Overlay
+    /** What a parent can do after entering the password on the time-up screen. */
+    data object ParentOptions : Overlay
     data class Pin(val mode: PinMode, val onDone: () -> Unit) : Overlay
 }
 
@@ -64,6 +74,10 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     var apps by mutableStateOf<List<AppEntry>>(emptyList()); private set
     var hiddenApps by mutableStateOf<List<AppEntry>>(emptyList()); private set
+
+    /** Every app under the name Home shows for it, whether the child mode lets it onto Home or not. */
+    private var namedAll by mutableStateOf<List<AppEntry>>(emptyList())
+    val allApps: List<AppEntry> get() = namedAll.sortedBy { it.label.lowercase() }
 
     /** Each folder's apps, by folder id, in the folder's order. */
     var folderApps by mutableStateOf<Map<String, List<AppEntry>>>(emptyMap()); private set
@@ -117,6 +131,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         AppCatalog.renameFolder = ::renameFolder
         AppCatalog.pinSource = ::pinSourceById
         AppCatalog.layout = layoutOps
+        KidsMode.init(context)
         reload()
         // A tile picture set or removed from the phone page.
         viewModelScope.launch { snapshotFlow { CustomIcons.version }.drop(1).collect { reload() } }
@@ -125,6 +140,10 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { snapshotFlow { SourceLooks.all }.drop(1).collect { if (loaded) arrange() } }
         // An app renamed on the phone page.
         viewModelScope.launch { snapshotFlow { AppNames.all }.drop(1).collect { if (loaded) arrange() } }
+        // The child mode's rules come and go from the phone page, and the quiz tile with them.
+        viewModelScope.launch {
+            snapshotFlow { KidsMode.enabled to KidsMode.quizTile }.drop(1).collect { if (loaded) arrange() }
+        }
     }
 
     /**
@@ -209,7 +228,12 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         AppCatalog.sources = sources
         // Names typed on the phone page stand in for the apps' own, everywhere Home shows one.
         val named = all.map { e -> AppNames.of(e.key)?.let { e.copy(label = it) } ?: e }
-        val arrangement = store.arrange(named + pinned) { folder, inside ->
+        namedAll = named
+        // The child mode's quiz tile is a tile like the others while a quiz can still earn time: it
+        // can be moved, hidden and put in a folder. LayoutStore keeps the place of a tile that is
+        // away for a while, so it comes back where the viewer put it.
+        val tiles = if (KidsMode.quizTile) named + pinned + quizEntry else named + pinned
+        val arrangement = store.arrange(tiles) { folder, inside ->
             val shown = inside.take(9).map { it.art }
             val art = folderArt[folder.id]?.takeIf { (made, _) -> made.size == shown.size && made.indices.all { made[it] === shown[it] } }?.second
                 ?: TileArtFactory.forFolder(shown).also { folderArt[folder.id] = shown to it }
@@ -222,6 +246,18 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         AppCatalog.folders = arrangement.home.filter { it.folder != null }
         folderApps = arrangement.folders
         hiddenApps = arrangement.hidden
+    }
+
+    /** The tile that starts a round of questions while the child mode is on. */
+    private val quizEntry: AppEntry by lazy {
+        AppEntry(
+            packageName = KidsMode.QUIZ_KEY,
+            label = context.getString(R.string.kids_tile_quiz),
+            component = ComponentName(KidsMode.QUIZ_KEY, KidsMode.QUIZ_KEY),
+            leanback = false,
+            removable = false,
+            art = TileArtFactory.forQuiz(),
+        )
     }
 
     /** An app or folder on Home, or an app inside a folder. */
@@ -398,6 +434,18 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     fun whenUnlocked(action: () -> Unit) {
         if (!AerialSettings.locked) action()
         else overlay = Overlay.Pin(PinMode.Unlock) { overlay = Overlay.None; action() }
+    }
+
+    /** How Home names [pkg], or the package name itself for an app Home does not list. */
+    fun labelFor(pkg: String): String = namedAll.firstOrNull { it.key == pkg }?.label ?: pkg
+
+    fun openQuiz(appKey: String?) {
+        overlay = Overlay.Quiz(appKey)
+    }
+
+    /** Home Guard brought Aerial back because a child may not be in [pkg]; say why. */
+    fun onBlocked(pkg: String, block: KidsMode.Block?) {
+        overlay = Overlay.TimeUp(labelFor(pkg), pkg, block ?: KidsMode.Block.TimeUp)
     }
 
     fun hide(key: String) {
