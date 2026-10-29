@@ -77,6 +77,13 @@ android {
     }
     testOptions {
         unitTests.isIncludeAndroidResources = true
+        // `./gradlew -Probohome ...`: Robolectric keeps its download lock in $HOME, and a sandboxed
+        // build cannot write there (this machine); this puts it under build/ instead.
+        if (project.hasProperty("robohome")) {
+            unitTests.all {
+                it.systemProperty("user.home", rootProject.layout.buildDirectory.dir("test-home").get().asFile.absolutePath)
+            }
+        }
     }
     packaging {
         resources.excludes += setOf("/META-INF/{AL2.0,LGPL2.1}", "DebugProbesKt.bin", "kotlin-tooling-metadata.json")
