@@ -204,7 +204,7 @@
     <string name="pin_enter">Enter password</string>
     <string name="pin_enter_hint">Use the number keys or the keypad below.</string>
     <string name="pin_create">Choose a password</string>
-    <string name="pin_create_hint">Six digits. Keep it somewhere safe: if it is forgotten, only a computer over ADB can reset it.</string>
+    <string name="pin_create_hint">Six digits. It is changed, and reset if forgotten, on the phone page; a computer over ADB can also reset it.</string>
     <string name="pin_confirm">Enter It Again</string>
     <string name="pin_wrong">Wrong password. Try again.</string>
     <string name="pin_mismatch">The two passwords differ. Choose one again.</string>

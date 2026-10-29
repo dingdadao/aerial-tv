@@ -203,7 +203,7 @@
     <string name="pin_enter">输入密码</string>
     <string name="pin_enter_hint">用遥控器的数字键，或下面的键盘。</string>
     <string name="pin_create">设置密码</string>
-    <string name="pin_create_hint">6 位数字。请记好：忘了只能用电脑通过 ADB 重置为 313074。</string>
+    <string name="pin_create_hint">6 位数字。忘了可以在手机页面上重设，也可以用电脑通过 ADB 重置。</string>
     <string name="pin_confirm">再输入一次</string>
     <string name="pin_wrong">密码不对，请重试。</string>
     <string name="pin_mismatch">两次输入的不一样，请重新设置。</string>

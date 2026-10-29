@@ -190,6 +190,8 @@ Run the commands yourself on my computer, and at the end paste the raw output of
 
 ### Troubleshooting
 
+- **Personalize asks for a password, or you forgot it**: Personalize, the child mode and hidden apps all sit behind the parent password. It starts as `313074`; change it the first time. The phone page (port `8790` of the TV's address, QR in Personalize) has an eight-character password of its own, and that page is where the TV's password is changed and reset — not the remote.
+
 - **Will it work on my TV?** See [Supported TVs](#supported-tvs) below.
 
 - **Installed only the APK from a USB stick**: from 1.32 Aerial has an icon in the TV's app list and, when opened, shows how to make it the Home screen. With the APK alone, Home, power-on and wake still go to the old launcher; run the command above or hand it to an agent once more (it installs over, settings stay).

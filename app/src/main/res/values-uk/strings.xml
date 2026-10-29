@@ -196,7 +196,7 @@
     <string name="pin_enter">Введіть пароль</string>
     <string name="pin_enter_hint">Користуйтеся цифровими клавішами або клавіатурою нижче.</string>
     <string name="pin_create">Виберіть пароль</string>
-    <string name="pin_create_hint">Шість цифр. Збережіть його в надійному місці: якщо його забуто, скинути його можна лише з комп’ютера через ADB на 313074.</string>
+    <string name="pin_create_hint">Шість цифр. Змінити його й скинути забутий можна на сторінці телефона; з комп’ютера — через ADB.</string>
     <string name="pin_confirm">Введіть ще раз</string>
     <string name="pin_wrong">Неправильний пароль. Спробуйте ще раз.</string>
     <string name="pin_mismatch">Паролі не збігаються. Виберіть знову.</string>

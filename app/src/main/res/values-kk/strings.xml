@@ -196,7 +196,7 @@
     <string name="pin_enter">Парольді енгізіңіз</string>
     <string name="pin_enter_hint">Сандық пернелерді немесе төмендегі пернетақтаны пайдаланыңыз.</string>
     <string name="pin_create">Пароль таңдаңыз</string>
-    <string name="pin_create_hint">Алты сан. Оны сенімді жерде сақтаңыз: ұмытып қалсаңыз, оны тек компьютерден ADB арқылы 313074-ке қалпына келтіруге болады.</string>
+    <string name="pin_create_hint">Алты сан. Оны өзгерту және ұмытылғанын қалпына келтіру телефон парақшасында; компьютерден ADB арқылы да болады.</string>
     <string name="pin_confirm">Қайта енгізіңіз</string>
     <string name="pin_wrong">Пароль дұрыс емес. Қайталап көріңіз.</string>
     <string name="pin_mismatch">Парольдер сәйкес келмейді. Қайтадан таңдаңыз.</string>
