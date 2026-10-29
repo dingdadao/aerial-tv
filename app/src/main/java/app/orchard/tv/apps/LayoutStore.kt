@@ -61,6 +61,27 @@ class LayoutStore(context: Context) {
 
     fun folders(): List<Folder> = order.mapNotNull(::folderOf)
 
+    /**
+     * The apps behind Home's first [tiles] tiles in the saved order, a folder's apps (those its
+     * picture shows) for a folder: what a cold start loads before the rest. Apps not [installed]
+     * hold no place, as on Home; a pinned input does. Empty before Home was first arranged.
+     */
+    fun leading(tiles: Int, installed: Set<String>): Set<String> = buildSet {
+        var n = 0
+        for (key in order) {
+            if (n >= tiles) break
+            if (key in hidden) continue
+            val folder = folderOf(key)
+            if (folder != null) {
+                val inside = folder.apps.filter { it !in hidden && it in installed }
+                if (inside.isEmpty()) continue
+                addAll(inside.take(9))
+            } else if (key in installed) add(key)
+            else if (!key.startsWith(SOURCE_KEY_PREFIX)) continue
+            n++
+        }
+    }
+
     /** The folder [key] is in, if any. */
     fun folderHolding(key: String): Folder? = folders.values.firstOrNull { key in it.apps }
 

@@ -78,8 +78,26 @@ val InterDisplay = inter(32f)
 
 object Type {
     val Clock = TextStyle(
-        fontFamily = InterDisplay, fontWeight = FontWeight.W500,
-        fontSize = 104.sp, lineHeight = 104.sp, letterSpacing = (-0.02).em, color = Palette.Label,
+        fontFamily = InterDisplay, fontWeight = FontWeight.W700,
+        fontSize = 104.sp, letterSpacing = (-0.04).em, color = Palette.Label,
+    )
+    /** Over and under the large clock: the date, and the weather. */
+    val ClockDate = TextStyle(
+        fontFamily = InterDisplay, fontWeight = FontWeight.W600,
+        fontSize = 19.sp, letterSpacing = (-0.005).em, color = Palette.Label,
+    )
+    val ClockDetail = TextStyle(
+        fontFamily = InterText, fontWeight = FontWeight.W600,
+        fontSize = 16.sp, color = Palette.Label,
+    )
+    /**
+     * The smaller clocks (Home's small clock, Control Center, the screensaver). Display cuts and
+     * negative tracking made their digits run together at these sizes (#494), so they take the
+     * text cut and open tracking. Size is set where used.
+     */
+    val SmallClock = TextStyle(
+        fontFamily = InterText, fontWeight = FontWeight.W600,
+        letterSpacing = 0.05.em, color = Palette.Label,
     )
     val LargeTitle = TextStyle(
         fontFamily = InterDisplay, fontWeight = FontWeight.W600,

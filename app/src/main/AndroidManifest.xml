@@ -17,6 +17,10 @@
     <!-- Installing a new version from Control Center (update/Updates.kt). On TVs without the
          "install unknown apps" page (TCL) tools/install.sh allows it over ADB. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Some Android 5/6 TV firmwares deny even their app-specific external cache without these.
+         Requested at runtime on Android 6 only when the update directory is not writable (#592). -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="23" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="23" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- Both granted only over ADB by tools/install.sh, never requested in the app:
          - WRITE_SECURE_SETTINGS lets Aerial turn Home Guard back on after firmwares that
@@ -50,6 +54,17 @@
     <queries>
         <package android:name="com.skyworth.tv" />
         <provider android:authorities="com.skyworth.tv.sdk.provider" />
+        <!-- SystemProbe.coocaaInputPanel: coocaaInputPanel asks whether Coocaa's Quick Panel
+             service exists; without this the Android 11 visibility filter hides it. -->
+        <package android:name="com.coocaa.os.ccosservice" />
+        <!-- SystemProbe.skyworthPicturePanel: on Skyworth/Coocaa TVs (75A7D) Control Center opens
+             the picture panel through SkySetting's exported HalfScreenService; without this the
+             Android 11 visibility filter hides the service. -->
+        <package android:name="com.skyworth.setting" />
+        <!-- SystemProbe.openInputPicker: older Coocaa firmware's own source dialog. -->
+        <intent>
+            <action android:name="coocaa.intent.action.SOURCE_DIALOG" />
+        </intent>
     </queries>
 
     <!-- largeHeap: up to Android 7 bitmaps live on the Java heap, and LeTV X3-55 Pro (Android 5.0.1)
@@ -123,6 +138,10 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </service>
+
+        <receiver
+            android:name=".update.UpdateResult"
+            android:exported="false" />
 
         <receiver
             android:name=".guard.ConfigReceiver"

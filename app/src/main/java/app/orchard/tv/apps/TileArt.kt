@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import app.orchard.tv.settings.AerialSettings
 import app.orchard.tv.ui.theme.Glyph
 import app.orchard.tv.ui.theme.drawGlyph
 import androidx.compose.ui.graphics.ImageBitmap
@@ -51,6 +52,8 @@ class TileArt(
      * one textured draw per frame, which matters on TV chips.
      */
     val backdrop: ImageBitmap,
+    /** A stand-in in the app's color while its picture is still being read (see AppCatalog.load). */
+    val placeholder: Boolean = false,
 )
 
 /** Firmware apps Aerial draws its own tile for, each in the color that tells the kind apart. */
@@ -81,11 +84,26 @@ object TileArtFactory {
     @Volatile var W = 352; private set
     @Volatile var H = 198; private set
 
+    private var density = 2f
+
     /** Called with [app.orchard.tv.ui.theme.canvasDensity] before any tile is built. */
     fun useCanvasDensity(density: Float) {
-        // 176dp: the 147dp tile at its 1.15× focus scale, with a little to spare.
-        W = (176 * density).roundToInt().coerceIn(352, 704)
+        this.density = density
+        fitColumns()
+    }
+
+    /**
+     * Sizes the artwork for AerialSettings.homeColumns; true when that changed it, and the tiles
+     * want drawing again. 176dp: the 147dp tile of five a row at its 1.15× focus scale, with a
+     * little to spare; 222dp the 187dp one of four. Six a row stays at five's: it is smaller still.
+     */
+    fun fitColumns(): Boolean {
+        val dp = if (AerialSettings.homeColumns == 4) 222 else 176
+        val w = (dp * density).roundToInt().coerceIn(352, 888)
+        if (w == W) return false
+        W = w
         H = W * 9 / 16
+        return true
     }
 
     /**
@@ -99,6 +117,9 @@ object TileArtFactory {
 
     /** The resolution an icon is sampled at to find its logo. */
     private const val SAMPLE = 256
+
+    /** How far from a pixel [cutOut] looks for the plate and the logo: an edge's antialiasing is a pixel or two wide. */
+    private const val EDGE_RADIUS = 2
 
     private const val GRAPHITE_TOP = 0xFF3A3A3C.toInt()
     private const val GRAPHITE_BOTTOM = 0xFF242426.toInt()
@@ -437,22 +458,62 @@ object TileArtFactory {
 
     /**
      * Keeps only what stands out from the plate (colored [top] to [bottom] across [logo]) in a
-     * logo layer, its edges eased by how far each pixel is from the plate color; in white if asked.
+     * logo layer; in white if asked.
+     *
+     * Inside the logo a pixel is kept by how far it is from the plate color, so a faint part
+     * (当贝's "DANGBEI.COM") stays faint and a shaded one (a light-blue fold in a white logo)
+     * stays whole. On the logo's edge, next to the plate, a pixel is the logo and the plate mixed:
+     * there its distance against the logo's nearby distance says how much of it is logo, which
+     * keeps the icon's own antialiasing. (Edges used to go through the same fixed ramp as the
+     * inside, 24 to 96 in color distance: a logo far from its plate, white on red at 517 (#640:
+     * 网易云音乐), had every edge pixel past a fifth logo fully opaque, and curves came out
+     * stepped.)
      */
     private fun cutOut(layer: Bitmap, logo: RectF, top: Int, bottom: Int, white: Boolean) {
         val px = IntArray(W * H).also { layer.getPixels(it, 0, W, 0, 0, W, H) }
+        val d = IntArray(W * H)
+        val plates = IntArray(H) { y -> ColorUtils.blendARGB(top, bottom, ((y - logo.top) / logo.height()).coerceIn(0f, 1f)) }
+        for (y in 0 until H) for (x in 0 until W) {
+            val i = y * W + x
+            d[i] = if (px[i] ushr 24 == 0) 0 else distance(px[i], plates[y])
+        }
+        fun inside(distance: Int) = ((distance - 24) / 72f).coerceIn(0f, 1f)
+        val r = EDGE_RADIUS
         for (y in 0 until H) {
-            val plate = ColorUtils.blendARGB(top, bottom, ((y - logo.top) / logo.height()).coerceIn(0f, 1f))
             for (x in 0 until W) {
                 val i = y * W + x
                 val c = px[i]
                 if (c ushr 24 == 0) continue
-                val keep = ((distance(c, plate) - 24) / 72f).coerceIn(0f, 1f)
+                // The plate within reach makes this an edge pixel; the farthest pixel within reach
+                // is the logo there.
+                var nearPlate = false
+                var local = 0
+                for (yy in maxOf(0, y - r)..minOf(H - 1, y + r)) for (xx in maxOf(0, x - r)..minOf(W - 1, x + r)) {
+                    val v = d[yy * W + xx]
+                    if (v <= 24) nearPlate = true
+                    if (v > local) local = v
+                }
+                val share = if (nearPlate && local > 24) ((d[i] - 12f) / (local * 0.95f - 12f)).coerceIn(0f, 1f) else 1f
+                val keep = if (nearPlate) share * inside(local) else inside(d[i])
                 val a = ((c ushr 24) * keep).roundToInt()
-                px[i] = (a shl 24) or (if (white) 0xFFFFFF else c and 0xFFFFFF)
+                val rgb = when {
+                    white -> 0xFFFFFF
+                    share > 0f && share < 1f -> unmix(c, plates[y], share)
+                    else -> c and 0xFFFFFF
+                }
+                px[i] = (a shl 24) or rgb
             }
         }
         layer.setPixels(px, 0, W, 0, 0, W, H)
+    }
+
+    /** The logo's own color in an edge pixel that is [share] logo and the rest [plate]. */
+    private fun unmix(c: Int, plate: Int, share: Float): Int {
+        fun ch(shift: Int): Int {
+            val p = (plate shr shift) and 0xFF
+            return (p + (((c shr shift) and 0xFF) - p) / share).roundToInt().coerceIn(0, 255)
+        }
+        return (ch(16) shl 16) or (ch(8) shl 8) or ch(0)
     }
 
     private fun legacy(icon: Drawable, recipe: TileRecipe?): TileArt {
@@ -631,7 +692,8 @@ object TileArtFactory {
         for (i in px.indices) {
             val c = px[i]
             val low = minOf((c shr 16) and 0xFF, (c shr 8) and 0xFF, c and 0xFF)
-            val keep = ((low - 150) / 70f).coerceIn(0f, 1f)
+            // From about 45% to 90% white on a dark picture; a narrower ramp stepped the curves (#640).
+            val keep = ((low - 115) / 115f).coerceIn(0f, 1f)
             px[i] = (((c ushr 24) * keep).roundToInt() shl 24) or 0xFFFFFF
         }
         layer.setPixels(px, 0, W, 0, 0, W, H)

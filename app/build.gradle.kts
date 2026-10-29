@@ -16,8 +16,8 @@ android {
         // Android 5.0. Compose 1.10 and later need 6.0, so the Compose BOM below stays on 1.9.
         minSdk = 21
         targetSdk = 34
-        versionCode = 55
-        versionName = "1.47"
+        versionCode = 85
+        versionName = "1.69"
         // `./gradlew -Pdiag ...`: a build for one reporter's TV whose logcat shows no app lines;
         // see system/DiagLog.kt.
         val diag = project.hasProperty("diag")
@@ -97,6 +97,8 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.2")
     implementation("androidx.core:core-ktx:1.16.0")
+    // Baseline Profile install (src/main/baseline-prof.txt) and its compile state in the diagnostics.
+    implementation("androidx.profileinstaller:profileinstaller:1.4.0")
     // Aerial films. 1.8 is the last Media3 that runs on Android 5.0 (1.9 raised minSdk to 23).
     implementation("androidx.media3:media3-exoplayer:1.8.1")
     implementation("androidx.media3:media3-datasource:1.8.1")

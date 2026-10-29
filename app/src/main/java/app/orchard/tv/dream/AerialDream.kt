@@ -1,5 +1,9 @@
 package app.orchard.tv.dream
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.service.dreams.DreamService
 import android.view.KeyEvent
 import androidx.compose.runtime.CompositionLocalProvider
@@ -90,12 +94,30 @@ class AerialDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
         return true
     }
 
+    /**
+     * Ends the dream as the screen goes off, so its film lets the decoder go before the TV
+     * suspends, as Home's own screensaver does. TCL tc8000_ay30a2 (Amlogic, Android 11, firmware
+     * 2026) could not be woken from standby whenever AerialDream was the system screensaver, even
+     * with the guard out; with Home's in-app screensaver playing as the power key was pressed, it
+     * woke every time (issue #371, the reporter's experiments).
+     */
+    private val screenOff = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            DiagLog.i("screen off; ending the dream")
+            finish()
+        }
+    }
+
     override fun onDreamingStarted() {
         super.onDreamingStarted()
+        running = this
         registry.currentState = Lifecycle.State.RESUMED
+        runCatching { registerReceiver(screenOff, IntentFilter(Intent.ACTION_SCREEN_OFF)) }
     }
 
     override fun onDreamingStopped() {
+        if (running === this) running = null
+        runCatching { unregisterReceiver(screenOff) }
         // Since Android 11 the dream lives in an activity: a key press finishes it, the window is
         // detached first (DESTROYED), and only then is the dream stopped. Moving back to CREATED
         // from there throws and took Aerial down on every wake (TCL MT5879).
@@ -104,7 +126,25 @@ class AerialDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
     }
 
     override fun onDetachedFromWindow() {
+        if (running === this) running = null
         registry.currentState = Lifecycle.State.DESTROYED
         super.onDetachedFromWindow()
+    }
+
+    companion object {
+        /** The dream on screen in this process, if any. Main thread only. */
+        private var running: AerialDream? = null
+
+        /**
+         * Ends the dream for a Home press the guard took before the system saw it. The system never
+         * got that press, so nothing else closed the dream: Home did nothing over it (TCL MT5879,
+         * Android 11, where the guard filters keys). True when there was a dream to end.
+         */
+        fun endForHome(): Boolean {
+            val dream = running ?: return false
+            DiagLog.i("dream ended by Home")
+            dream.finish()
+            return true
+        }
     }
 }

@@ -74,8 +74,8 @@ fun PinPad(visible: Boolean, mode: PinMode?, onDone: () -> Unit, onCancel: () ->
     if (mode != null) shown = mode
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(tween(200)) + scaleIn(tween(300, easing = Motion.Drawer), initialScale = 0.94f),
-        exit = fadeOut(tween(150)) + scaleOut(tween(150, easing = Motion.EaseOut), targetScale = 0.97f),
+        enter = fadeIn(tween(200, easing = Motion.EaseOut)) + scaleIn(tween(300, easing = Motion.Drawer), initialScale = 0.94f),
+        exit = fadeOut(tween(150, easing = Motion.EaseOut)) + scaleOut(tween(150, easing = Motion.EaseOut), targetScale = 0.97f),
         modifier = Modifier.fillMaxSize(),
     ) {
         // Each opening starts empty: the panel leaves composition while hidden.

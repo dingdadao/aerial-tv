@@ -6,11 +6,24 @@
 |---|---|---|---|
 | 65G60 / 酷开 9S60 | Android 8.0，MStar MSD6A848 | 主页键能回 Aerial；开机一定进酷开桌面：`sky_launcher`（在 system_server 里）读 `/system/pcfg/9S60_G60/config/general_config.xml` 的 `DEFAULT_HOMEPAGE` 按组件启动，不走 HOME 解析；守护在开机时的 `startActivity` 被 `CooCaaCheckDialogPermission` 丢掉（调用方没有可见 Activity）；`skyRMService` 切前台时会 force-stop 上一个第三方 App；开机把第三方 App 置成 stopped。报告人用 root 改 `DEFAULT_HOMEPAGE` 为 `app.orchard.tv/app.orchard.tv.MainActivity` 才开机直达。开机广告是 `com.tianci.ad`，`pm uninstall --user 0` 就没了 | #316 |
 | 7T641（mt9633） | Android 13 | 冷启动约 60 秒黑屏：Aerial 早已画完，但 SurfaceFlinger 里它的窗口 `crop=[0,0,0,0]`；遥控器「播放」键在这台上发的是 Home，看视频时按到会被守护拉回 Aerial，然后又是 60 秒黑屏 | #321、#326 |
+| 7T634_P3H（mt9633 / mt9952，K3） | Android 13 | 1.57 黑屏：首页已画完，`focus false`，两次「没有焦点窗口」ANR；改包名也一样。同一台上 FreeTV 能显示，原因还没找到。报告人发现这台的按应用自启动 / 后台保留在 `skyresource` 服务里（`service call skyresource 5 s16 <包名> i32 0 i32 1` 允许自启动，`i32 1 i32 2` 后台保留，只在这台固件上核对过），还没对 Aerial 试 | [#864](https://github.com/pengchujin/aerial-tv/issues/864) |
+| 8R721_A6FP（titanite，RTD2885P） | Android 13 | 1.67-guard 首页先显示出来，约 30 秒后两次「没有焦点窗口」ANR，回到 `com.skyworth.officehomepage`，和 8R710 / 8R734 一样 | [#839](https://github.com/pengchujin/aerial-tv/issues/839) |
 | 75A6E（8R710_A6E，Realtek RTD2885P） | Android 13 | standard 版是唯一的 HOME 候选，按主页键整机卡死；创维电视应用 `com.skyworth.tv` 一直占着输入焦点，Aerial 的窗口 `NOT_VISIBLE`、`focus false`，guard 版也一样。目前没有办法 | #365 |
 | 75A7D（8R134_A7D，Realtek RTD2885N） | Android 11，酷开 CCOS 9.0 | `TvInputManager` 一个信号源都没有；改为从 `com.skyworth.tv.sdk.provider` 读列表、用 `com.skyworth.tv` 的 `SkyTVMainActivity` 切换，报告人在真机上验证通过，接口见下（1.45 起用上） | #444 |
 | 酷开 8R710_P8F（同一机芯 titanite） | Android 13 | 只有诊断报告，现象待补，估计同 #365 | #358 |
 | 松下 TH-55HX560C（创维代工，天赐系统，GX580C，m7221） | Android 8.0 | 主页键、返回都能回 Aerial；`TvInputManager` 一个信号源都没有，控制中心显示「没有可用的信号源」。还不知道天赐切信号源的接口 | #370 |
 | 8R134 / 8R145、K3 Pro 等 | Android 11 | 见 #43、#155：开机先进自家桌面，切信号源时经过 `com.tianci.tv/.SkyLauncher` | #43、#155 |
+
+## sky848_9s60 机芯（MStar m7221 / MSD6A848，Android 8.0）：看固件版本号
+
+报告人在 #713 对比了这块主板上的几台：`ro.build.version.incremental` 是 `021.008.x` 的能接管（70A9，#461），`022.008.x` 起开机和主页键都在酷开桌面，要 root 改 `DEFAULT_HOMEPAGE`（65G60 / 9S60 #316、7S718_H30 #686、7S712_G32 #548，7S87_A20 #630、7S77_H4 #549 症状相同）。机制见上表 65G60 一行：开机由 `sky_launcher` 按 `general_config.xml` 的组件直启，守护在后台的 `startActivity` 被 `CooCaaCheckDialogPermission` 丢掉，`persist.service.homepage.*` 会被写回。样本只有四五台，有反例再改。
+
+root 后把 `/system/pcfg/<型号目录>/config/general_config.xml` 里的 `DEFAULT_HOMEPAGE` 改成 `app.orchard.tv/app.orchard.tv.MainActivity`（必须是「包名/完整类名」两段），#316 里连续 10 次冷启动都直达。
+
+## 75A7D 的信号源键和亮度（#566，报告人实测，1.49 起）
+
+- 遥控器信号源键：固件弹自己的 Quick Panel（`com.coocaa.os.ccosservice/com.coocaa.os.controlcenter.quicksettings.service.FeatureService`），同时把按键交给前台 App。有这个服务时 Aerial 不再响应信号源键，和 TCL 的 `tclInputPanel` 一样。
+- 亮度：`screen_brightness` 一直是 2/255，写它不改背光（画质中间件管）；`ACTION_DISPLAY_SETTINGS` 也解析不到。图像侧栏是启动 `com.skyworth.setting/.service.HalfScreenService`、带 `Key = "android.settings.PICTURE_SETTINGS"`（导出、无权限）。有这个服务时控制中心不画亮度滑条，改成打开它。两个包都要写进 `<queries>`。
 
 ## 75A7D 的信号源接口
 

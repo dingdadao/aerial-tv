@@ -2,12 +2,15 @@ package app.orchard.tv.settings
 
 import android.content.Context
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.edit
 import android.os.SystemClock
 import android.provider.Settings
+import app.orchard.tv.apps.IconLibrary
 import app.orchard.tv.guard.GuardSetup
+import app.orchard.tv.system.DeviceClass
 import app.orchard.tv.wallpaper.AerialQuality
 import java.security.MessageDigest
 
@@ -35,6 +38,21 @@ enum class UiSounds(val key: String) {
 
     companion object {
         fun of(key: String?) = entries.firstOrNull { it.key == key }
+    }
+}
+
+/**
+ * How much of the interface's light and motion to draw. Full is the glass panels, a focused tile's
+ * sheen, parallax and shadow, and the panel's highest refresh rate. Lite draws the panels in plain
+ * dark glass (no offscreen layer per frame), a focused tile without sheen, parallax or shadow, and
+ * stays at 60 Hz: for TVs whose GPU cannot keep up (issues #232, #354). Auto is Lite on a low-end
+ * TV (DeviceClass) and Full elsewhere.
+ */
+enum class Effects(val key: String) {
+    Auto("auto"), Full("full"), Lite("lite");
+
+    companion object {
+        fun of(key: String?) = entries.firstOrNull { it.key == key } ?: Auto
     }
 }
 
@@ -68,6 +86,19 @@ object AerialSettings {
      */
     var oneRowHome by mutableStateOf(true); private set
 
+    /**
+     * Apps a row on Home: [HOME_COLUMNS], five by default as Aerial always had, six as tvOS 26 lays
+     * them out, four for bigger tiles from the sofa. Folders follow it.
+     */
+    var homeColumns by mutableIntStateOf(DEFAULT_HOME_COLUMNS); private set
+
+    /**
+     * Home shows only its first this many tiles, for trying a nearly empty Home on a TV that has
+     * many apps (ConfigReceiver preview_apps). Kept in memory only: nothing is hidden or moved,
+     * and the next start, or 0, shows them all again.
+     */
+    var previewApps by mutableIntStateOf(0)
+
     /** In one-row mode, the top of the second row peeking under the first; off hides it until you go down. */
     var peekNextRow by mutableStateOf(true); private set
 
@@ -82,6 +113,22 @@ object AerialSettings {
 
     /** The date and weather over a big clock above the top row, instead of one small line in the corner. */
     var largeClock by mutableStateOf(false); private set
+
+    /**
+     * The moving wallpaper (aerial films, the owner's own videos) plays on the top row whatever the
+     * keys do, under a little shade, rather than only once Home has sat still (issues #360, #456).
+     * The grid below and panels still stop it: they cover it.
+     */
+    var wallpaperAlwaysMoves by mutableStateOf(false); private set
+
+    /** The weather beside the clock; off for those who want the time alone (issue #472). */
+    var showWeather by mutableStateOf(true); private set
+
+    /**
+     * The time over Aerial's aerial and photo screensavers (issue #240: TCL's firmware puts its own
+     * clock over the system screensaver). The clock screensaver is the clock and keeps it.
+     */
+    var screensaverClock by mutableStateOf(true); private set
 
     /** Every app's name under its tile, not only the focused one's (issue #28), the top row's on the glass plate too. */
     var showAllNames by mutableStateOf(false); private set
@@ -123,7 +170,18 @@ object AerialSettings {
 
     /** Which of Apple's files the aerial screensaver plays; Auto is the best this TV decodes (issues #198, #217). */
     var aerialQuality by mutableStateOf(AerialQuality.Auto); private set
+
+    var effects by mutableStateOf(Effects.Auto); private set
+
+    /** This TV counts as low-end for [Effects.Auto]; see DeviceClass. */
+    var lowEnd = false; private set
+
+    /** Draw the lighter interface (see [Effects]). */
+    val lite: Boolean get() = effects == Effects.Lite || (effects == Effects.Auto && lowEnd)
     private const val DEFAULT_SCREENSAVER_MINUTES = 5
+
+    val HOME_COLUMNS = 4..6
+    private const val DEFAULT_HOME_COLUMNS = 5
 
     fun init(context: Context) {
         if (started) return
@@ -143,10 +201,14 @@ object AerialSettings {
         pinSet = true
         oneRowHome = prefs.getBoolean("one_row_home", true)
         peekNextRow = prefs.getBoolean("peek_next_row", true)
+        homeColumns = prefs.getInt("home_columns", DEFAULT_HOME_COLUMNS).takeIf { it in HOME_COLUMNS } ?: DEFAULT_HOME_COLUMNS
         clockRight = prefs.getBoolean("clock_right", false)
         largeClock = prefs.getBoolean("large_clock", false)
         homePlate = prefs.getBoolean("home_plate", true)
         showAllNames = prefs.getBoolean("show_all_names", false)
+        wallpaperAlwaysMoves = prefs.getBoolean("wallpaper_always_moves", false)
+        showWeather = prefs.getBoolean("show_weather", true)
+        screensaverClock = prefs.getBoolean("screensaver_clock", true)
         // Before 1.28 this was on or off; on meant whichever sounds Aerial played.
         uiSounds = UiSounds.of(prefs.getString("ui_sounds_kind", null)) ?: when {
             !prefs.getBoolean("ui_sounds", true) -> UiSounds.Off
@@ -156,6 +218,8 @@ object AerialSettings {
         backStartsScreensaver = prefs.getBoolean("back_starts_screensaver", true)
         screensaverMinutes = prefs.getInt("screensaver_minutes", DEFAULT_SCREENSAVER_MINUTES)
         aerialQuality = AerialQuality.of(prefs.getString("aerial_quality", null))
+        effects = Effects.of(prefs.getString("effects", null))
+        lowEnd = DeviceClass.lowEnd(app)
     }
 
     fun chooseBootSource(id: String?) {
@@ -207,6 +271,12 @@ object AerialSettings {
         app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("one_row_home", on) }
     }
 
+    fun chooseHomeColumns(columns: Int) {
+        if (columns !in HOME_COLUMNS) return
+        homeColumns = columns
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putInt("home_columns", columns) }
+    }
+
     fun choosePeekNextRow(on: Boolean) {
         peekNextRow = on
         app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("peek_next_row", on) }
@@ -237,6 +307,21 @@ object AerialSettings {
         app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("show_all_names", on) }
     }
 
+    fun chooseWallpaperAlwaysMoves(on: Boolean) {
+        wallpaperAlwaysMoves = on
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("wallpaper_always_moves", on) }
+    }
+
+    fun chooseShowWeather(on: Boolean) {
+        showWeather = on
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("show_weather", on) }
+    }
+
+    fun chooseScreensaverClock(on: Boolean) {
+        screensaverClock = on
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("screensaver_clock", on) }
+    }
+
     fun chooseBackStartsScreensaver(on: Boolean) {
         backStartsScreensaver = on
         app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("back_starts_screensaver", on) }
@@ -258,6 +343,11 @@ object AerialSettings {
         app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putStringSet("pinned_sources", pinnedSources) }
     }
 
+
+    fun chooseEffects(choice: Effects) {
+        effects = choice
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString("effects", choice.key) }
+    }
 
     fun chooseFocusStyle(style: FocusStyle) {
         focusStyle = style

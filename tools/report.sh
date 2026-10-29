@@ -42,6 +42,10 @@ MODEL=$(sh_ getprop ro.product.model)
 OUT="aerial-report-$(printf '%s' "${MODEL:-tv}" | tr -c 'A-Za-z0-9._-' '_').md"
 HOME_INTENT=(-a android.intent.action.MAIN -c android.intent.category.HOME)
 
+# From here a command the TV lacks or a grep that finds nothing is part of the report, not the end
+# of it: `cmd role` (before Android 10, and XGIMI's Android 11) and an empty tv_input stopped the
+# script halfway (issues #311, #454, #551).
+set +e
 {
   echo "### adb report"
   echo
@@ -67,9 +71,14 @@ HOME_INTENT=(-a android.intent.action.MAIN -c android.intent.category.HOME)
   echo
   echo "**Home**"
   echo '```'
-  echo "resolves to: $(sh_ cmd package resolve-activity --brief "${HOME_INTENT[@]}" | tail -n1)"
-  sh_ cmd package query-activities --brief "${HOME_INTENT[@]}" | sed 's/^/  /'
-  sh_ cmd role get-role-holders android.app.role.HOME | sed 's/^/role holder: /'
+  # Android 6 and older have no `cmd`; the shell's "cmd: not found" is not an answer (issue #818).
+  if [ -n "$(sh_ 'command -v cmd')" ]; then
+    echo "resolves to: $(sh_ cmd package resolve-activity --brief "${HOME_INTENT[@]}" -c android.intent.category.DEFAULT | tail -n1)"
+    sh_ cmd package query-activities --brief "${HOME_INTENT[@]}" | sed 's/^/  /'
+    sh_ cmd role get-role-holders android.app.role.HOME | sed 's/^/role holder: /'
+  else
+    echo "resolves to: (no cmd on this Android; see Aerial's own Home section below)"
+  fi
   echo "foreground: $(sh_ dumpsys activity activities | grep -m1 -E "mResumedActivity|topResumedActivity|mFocusedActivity" | sed 's/^ *//')"
   echo '```'
 

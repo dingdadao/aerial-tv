@@ -16,7 +16,14 @@ mkdir -p site/download site/tools
 gh release download --repo "$REPO" --pattern 'aerial-*.apk' --dir site/download
 gh release view --repo "$REPO" --json tagName -q .tagName > site/download/version.txt
 cp tools/get.sh site/install.sh
-cp tools/install.sh tools/restore.sh tools/tcast-push.py tools/report.sh site/tools/
+cp tools/install.sh tools/restore.sh tools/tcast-push.py tools/report.sh tools/selftest.sh site/tools/
 echo "Publishing $(cat site/download/version.txt): $(ls site/download | tr '\n' ' ')"
+
+# The tile pictures TVs download (IconLibrary). They are not ours to put in the public repo, so
+# they come from local/ (handed over privately, like the signing key). Deploying without them
+# would take them off the site.
+ICONS=local/dangbei-icons/icons
+[ -d "$ICONS" ] || { echo "error: $ICONS is missing; the icon library would be removed from the site" >&2; exit 1; }
+python3 tools/icon-library.py "$ICONS" site/icons
 
 npx wrangler@4 deploy

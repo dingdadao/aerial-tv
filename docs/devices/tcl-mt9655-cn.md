@@ -86,8 +86,28 @@ HTTP 服务日志里完全没有来自电视的请求（本机 macOS 防火墙�
 - TCL 设置 9 个分类逐个翻查（无障碍不在其中，屏保只列自家内容）
 - 工厂菜单路径（信源 → 模拟接受 → 菜单 → 设置 → 显示 → 专业设定 → 对比度 → 数字键 `1950`）**未验证成功**
 
+## 用户找到的办法：有线 adb（2026-10，#52 #588）
+
+- 鹤 6 Ultra（Android 14）上几位用 **USB A 对 A 线**把电视的 USB 口接到电脑，先走有线 adb，电视上能弹出授权；授权后无线 adb 也能用（断电后要重新接线）。
+- 有了 adb，部分固件的无障碍仍然打不开（设置写进去不生效），守护起不来，只能当普通 App 用。
+- #588 停用「软件包安装程序」后装上 standard 版并设成默认桌面，主页键能回 Aerial，开机仍先进原桌面。**停用安装程序有变砖风险，装完必须马上启用**，官方流程不推荐。
+
 ## 待作者确认的三个问题
 
 1. MT9655 平台是否有别的 ADB 入口？工厂菜单那条路径开出的是不是传统 adbd（明文 5555 + 弹窗授权）？
 2. 完全没有 ADB 时，`guard` flavor 是否还有其他接管 HOME 的可能（不依赖无障碍）？
 3. 需要我补哪些 logcat / `dumpsys` 才能定位授权通道？
+
+## 4K 界面（TCL 75Q10L，#607，作者 @waverjiang 的排查，Android 14）
+
+- `wm size` 是 1920×1080 / 320dpi，`dumpsys display` 的 real 也是 1920×1080，`ro.odm.tcl.panel_resolution` = 3840x2160，`ro.feature.graphics_4kui=true`。
+- TCL 自家桌面 `com.tcl.cyberui` 拿到 3840×2160 的缓冲加 0.5 的图层缩放，HWC 1:1 送显；第三方（Aerial）是 1080p 缓冲被放大，文字发虚。`framework.jar` 里有 `isUhdActivity` / `updateUhdActivityList`、`TCL_4KUI_WINDOW_SCALE` 等，像是系统服务按名单给窗口下发 4K 缓冲。`wm size 3840x2160` 和 `display_size_forced` 都被框架拦掉。
+- 显示模式是 1080p，所以 1.51 的 4K 画布（`UhdCanvas`）不会自动打开。之后改成按 `ro.feature.graphics_4kui` 判断（#645），面板尺寸用 `panel_resolution` 算出 2 倍，这台会自动打开；`--ez uhd_canvas false` 可关。HWC 会不会像对 TCL 桌面那样把这一层 1:1 送到面板，待作者实测；名单接口能否给第三方用，待看 framework.jar / services.jar。
+
+## 4K 界面：Q10L 上第三方桌面只能拿到 1080p（#607）
+
+TCL Q10L（MT9655，1.67-guard，2026-10-28 报告人实测）：Aerial 的 4K 画布（`--ez uhd_canvas true`）图层形状和 TCL 桌面一样（3840×2160 缓冲、0.5 变换），但 HWC 给它 `CLIENT` 合成、`Disp Frame 0 0 1920 1080`，TCL 桌面是 `DEVICE`、`3840 2160` 1:1。`wm size 3840x2160` 运行时被静默忽略；`settings put global display_size_forced 3840x2160` 重启后也不读（已删掉还原）。不改系统的话第三方桌面在这台上只有 1080p，报告人已关回 4K 画布。
+
+## 75T7M Pro（MT9655，Android 14）：守护开不起来（#829）
+
+诊断里 `enabled_accessibility_services = null`，`appops` 有 `ACCESS_RESTRICTED_SETTINGS: deny`（APK 是用文件装的）。先 `adb shell appops set app.orchard.tv ACCESS_RESTRICTED_SETTINGS allow` 再打开 Aerial，看守护能不能留住；留不住就和雷鸟 T966D5 一样，是固件定时清掉第三方无障碍（见 [ffalcon-t966d5.md](ffalcon-t966d5.md)）。待报告人确认。
