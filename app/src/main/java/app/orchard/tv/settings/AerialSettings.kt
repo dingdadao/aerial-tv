@@ -138,26 +138,31 @@ object AerialSettings {
     var backStartsScreensaver by mutableStateOf(true); private set
 
     /**
-     * The global parent password (6 digits, default 313074): asked before TV settings open, before
-     * hidden apps come back, and before the child-mode settings / time-up override. Replaces the
-     * old 4-digit PIN. Kept as a SHA-256 hash. One right entry holds for a while, until Home is
-     * pressed. The password is always set; [choosePin] with null resets it to the default.
+     * The global parent password (6 digits, [DEFAULT_PASSWORD] until a parent changes it): asked
+     * before TV settings open, before hidden apps come back, and before the child-mode settings /
+     * time-up override. Kept as a SHA-256 hash. The password is always set; [choosePin] with null
+     * resets it. Changing it is the phone page's job alone (PhoneServer): a remote that could set
+     * one would let a child set a password they know and then open everything with it.
      */
     var pinSet by mutableStateOf(false); private set
     private var pinHash: String? = null
     private var unlockedUntil = 0L
     private const val UNLOCK_MS = 10 * 60 * 1000L
-    const val DEFAULT_PASSWORD = "313074"
+    const val DEFAULT_PASSWORD = "123456"
 
     /**
-     * The phone page's own password (see PhoneServer): eight letters and digits without the
-     * look-alikes, so it can be read off the TV and typed on a phone. Kept as it stands rather than
-     * hashed, unlike the parent password, because the TV shows it again whenever a parent asks for
-     * it — a random one nobody wrote down would be no use. It is not the parent password and does
-     * not open anything on the TV; it opens the page that can, which is where the parent password
-     * is changed and reset.
+     * The phone page's own password (see PhoneServer): what opens the console, and nothing on the
+     * TV. It starts as [DEFAULT_WEB_PASSWORD] and the page says so until it is changed — a console
+     * left on the default is a console a child can open. Kept as it stands rather than hashed,
+     * because the TV shows it again under the QR code. It is not the parent password: this one
+     * opens the page, and the page is where the parent password is changed.
      */
-    var webPassword by mutableStateOf(""); private set
+    var webPassword by mutableStateOf(DEFAULT_WEB_PASSWORD); private set
+
+    /** Still the one every console starts with: the page asks for another until this is false. */
+    val webPasswordDefault: Boolean get() = webPassword == DEFAULT_WEB_PASSWORD
+
+    const val DEFAULT_WEB_PASSWORD = "123456"
 
     /**
      * Bumped whenever the PIN is entered, Home is pressed or the PIN is changed: the moments
@@ -210,8 +215,7 @@ object AerialSettings {
             prefs.edit { putString("parent_pw_hash", pinHash) }
         }
         pinSet = true
-        webPassword = prefs.getString("web_pw", null)?.takeIf { it.length >= 6 }
-            ?: newWebPassword().also { prefs.edit { putString("web_pw", it) } }
+        webPassword = prefs.getString("web_pw", null) ?: DEFAULT_WEB_PASSWORD
         oneRowHome = prefs.getBoolean("one_row_home", true)
         peekNextRow = prefs.getBoolean("peek_next_row", true)
         homeColumns = prefs.getInt("home_columns", DEFAULT_HOME_COLUMNS).takeIf { it in HOME_COLUMNS } ?: DEFAULT_HOME_COLUMNS

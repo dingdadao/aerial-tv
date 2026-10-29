@@ -190,7 +190,7 @@ Run the commands yourself on my computer, and at the end paste the raw output of
 
 ### Troubleshooting
 
-- **Personalize asks for a password, or you forgot it**: Personalize, the child mode and hidden apps all sit behind the parent password. It starts as `313074`; change it the first time. The phone page (port `8790` of the TV's address, QR in Personalize) has an eight-character password of its own, and that page is where the TV's password is changed and reset — not the remote.
+- **Personalize asks for a password, or you forgot it**: Personalize, the child mode and hidden apps all sit behind the parent password, which starts as `123456`. The phone page (port `8790` of the TV's address, QR in Personalize) has a password of its own, also starting as `123456` — **they are two separate passwords**: the console's opens the page, and the TV's parent password is changed from that page, never from the remote. The console says so until you change it, because a console left on the default is one a child with a phone can open.
 
 - **Will it work on my TV?** See [Supported TVs](#supported-tvs) below.
 

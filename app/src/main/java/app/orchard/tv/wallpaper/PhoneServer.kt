@@ -312,6 +312,9 @@ class PhoneServer private constructor(private val context: Context, private val 
         }
         return JSONObject()
             .put("selected", selected)
+            // Whether this console is still on the password every one starts with: the page says
+            // so, and says that it is not the TV's parent password, until it is changed.
+            .put("consoleDefault", AerialSettings.webPasswordDefault)
             .put("latestDaily", Wallpapers.LATEST_DAILY)
             .put("rotatePhotos", Wallpapers.ROTATE_PHOTOS)
             .put("screensaver", Wallpapers.screensaver.key)

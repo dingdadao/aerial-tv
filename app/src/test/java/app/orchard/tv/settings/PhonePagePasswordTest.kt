@@ -15,9 +15,13 @@ import org.robolectric.shadows.ShadowSystemClock
 import java.time.Duration
 
 /**
- * The phone page's password, and the session it buys (see PhoneServer.login). The address in the
- * QR code is fixed on purpose, so the password is the only thing standing between a child with a
- * phone on the home network and the child mode, the parent password and every picture on the TV.
+ * The console's password, and the session it buys (see PhoneServer.login). The address is the same
+ * on every TV and never changes, so this password is the only thing standing between a child with
+ * a phone on the home network and the child mode, the parent password and every picture on the TV.
+ *
+ * It starts as [AerialSettings.DEFAULT_WEB_PASSWORD], the same six digits as the parent password
+ * but a different password: this one opens the page, and the page is where the other is changed.
+ * The page says both of those things until it is changed ([AerialSettings.webPasswordDefault]).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28])
@@ -40,21 +44,40 @@ class PhonePagePasswordTest {
         AerialSettings.relock()
     }
 
-    /** Eight of the alphabet without look-alikes: it is read off a TV across the room and typed on a phone. */
+    /**
+     * A console starts on the password every console starts with, and says so: the page keeps a
+     * notice up (and the TV keeps [AerialSettings.webPasswordDefault]) until it is changed. A
+     * console left on it is a console a child with a phone on the home network opens with six
+     * digits everyone knows.
+     */
     @Test
-    fun aNewInstallHasAPagePasswordToReadOffTheTv() {
-        val pw = AerialSettings.webPassword
-        assertEquals(8, pw.length)
-        assertTrue(pw.all { it in "abcdefghjkmnpqrstuvwxyz23456789" })
-        assertTrue(AerialSettings.phonePageOpens(pw))
+    fun aNewConsoleStartsOnTheDefaultAndSaysSo() {
+        assertEquals("123456", AerialSettings.webPassword)
+        assertTrue(AerialSettings.webPasswordDefault)
+        assertTrue(AerialSettings.phonePageOpens("123456"))
     }
 
+    /** The console's password and the TV's are two different passwords; neither is the other. */
     @Test
-    fun thePagePasswordIsNotTheParentPassword() {
-        assertNotEquals(AerialSettings.DEFAULT_PASSWORD, AerialSettings.webPassword)
-        // It opens the page and nothing else: at the TV it is just a wrong entry.
-        assertFalse(AerialSettings.unlock(AerialSettings.webPassword))
+    fun theConsolePasswordIsNotTheParentPassword() {
+        assertFalse(AerialSettings.phonePageOpens(AerialSettings.DEFAULT_PASSWORD.dropLast(1)))
+        // Once it is changed they diverge for good: this one stops opening the page, ...
+        AerialSettings.chooseWebPassword("kitchen-table")
+        assertFalse(AerialSettings.webPasswordDefault)
+        assertFalse(AerialSettings.phonePageOpens(AerialSettings.DEFAULT_PASSWORD))
+        // ... and neither opens what the other does.
+        assertFalse(AerialSettings.unlock("kitchen-table"))
         assertTrue(AerialSettings.locked)
+    }
+
+    /** A password the parent chose is theirs: the notice goes, and stays gone across a restart. */
+    @Test
+    fun changingItEndsTheDefaultForGood() {
+        AerialSettings.chooseWebPassword("kitchen-table")
+        assertFalse(AerialSettings.webPasswordDefault)
+        restart()
+        assertFalse(AerialSettings.webPasswordDefault)
+        assertTrue(AerialSettings.phonePageOpens("kitchen-table"))
     }
 
     @Test

@@ -287,6 +287,15 @@
   .gate input:focus { outline: 2px solid var(--tint); outline-offset: 0; }
   .gate .btn { flex: none; padding: 0 20px; }
   .gate .err { color: var(--danger); }
+
+  /* A console still on the password every console starts with: said on every tab, until changed. */
+  .notice {
+    display: flex; flex-direction: column; gap: 10px; margin: 16px 0 0; padding: 14px 16px;
+    border-radius: 14px; background: var(--card); box-shadow: inset 3px 0 0 var(--danger);
+  }
+  .notice .txt { font-size: 14px; line-height: 1.4; color: var(--secondary); }
+  .notice b { display: block; margin-bottom: 3px; font-size: 15px; color: var(--label); }
+  .notice .btn { width: auto; align-self: flex-start; padding: 9px 16px; font-size: 14px; border-radius: 999px; }
 </style>
 </head>
 <body>
@@ -307,6 +316,16 @@
   <h1 id="title"></h1>
   <p>{{DEVICE}}</p>
 </header>
+
+<!-- The console's password is still the one every console starts with. Said here rather than in a
+     dialog: it stays until it is changed, on whichever tab one happens to be. -->
+<div class="notice" id="consoleNotice" hidden>
+  <div class="txt">
+    <b data-i18n="console_default_h"></b>
+    <span data-i18n="console_default_body"></span>
+  </div>
+  <button class="btn" id="consoleChange" data-i18n="console_default_btn"></button>
+</div>
 
 <!-- Home screen: the TV's tiles, arranged here -->
 <section data-tab="home">
@@ -446,7 +465,7 @@ let state = null, stateJson = '';
 
 // The language: ?lang=ru in the address, else the one picked under More (kept on the phone), else the
 // first of the phone's preferred languages that has a table, else English. Keys are in KEYS, one array of texts per language.
-const KEYS = ["screensaver", "screensaver_short", "ss_aerial", "ss_photos", "ss_clock", "focus", "focus_high", "focus_standard", "weather", "city_ph", "set", "upload_label", "feedback_h", "feedback_hint", "diag_show", "diag_copy", "diag_github", "hint_aerial", "hint_photos", "hint_clock", "g_live", "g_live_sub", "g_daily", "g_daily_sub", "g_photo", "g_builtin", "g_auto", "toast_wallpaper", "aria_delete", "confirm_delete", "wx_clear", "wx_partlycloudy", "wx_cloudy", "wx_fog", "wx_rain", "wx_snow", "wx_thunder", "wx_chosen", "wx_auto_btn", "toast_auto", "wx_guessed", "wx_none", "tag_source", "aria_rename", "toast_renamed", "toast_name_reset", "toast_rename_fail", "aria_reset_icon", "toast_icon_reset", "focus_hint_standard", "focus_hint_high", "daily_title", "daily_caption", "rotate_title", "rotate_caption", "empty_photos", "add_second", "toast_tv_updated", "sending_n", "toast_added", "toast_no_photos", "toast_send_fail", "toast_city_set", "toast_city_nf", "toast_set_fail", "toast_sending_icon", "toast_icon_set", "toast_icon_bad", "diag_collecting", "toast_diag_fail", "toast_copied", "toast_copy_manual", "language", "hint_follows", "ss_videos", "hint_videos", "videos_h", "videos_upload", "videos_hint", "videos_empty", "confirm_video_delete", "toast_videos_added", "toast_video_bad", "sending_video", "hint_system", "tab_home", "tab_more", "current_wp", "cancel", "save", "name_ph", "rename_hint", "change_icon", "this_tv", "folder_count", "folder_ph", "inputs_h", "inputs_hint", "rename_hint_app", "was_named", "arrange_hint", "arrange_unready", "hidden_h", "hidden_none", "hidden_locked", "show_app", "hide_app", "to_folder", "new_folder", "out_of_folder", "ungroup", "ungroup_confirm", "folder_hint", "toast_hidden", "toast_shown", "toast_in_folder", "toast_out_folder", "toast_ungrouped", "tab_looks", "looks_title", "show_on_home", "source_device", "source_plain", "source_device_hint", "tv_model", "tab_kids", "kids_mode_h", "kids_mode_on", "kids_mode_on_sub", "kids_hint_off", "kids_no_pin", "kids_no_usage", "kids_apps_h", "kids_apps_hint", "kids_restrict", "kids_free", "kids_all_day", "kids_used", "kids_earned", "kids_rule_mode", "kids_mode_slot", "kids_mode_quiz", "kids_mode_both", "kids_rule_unlock", "kids_unlock_pin", "kids_unlock_quiz", "kids_rule_quota", "kids_quota_none", "kids_rule_slots", "kids_slot_add", "kids_slot_remove", "toast_kids_saved", "kids_min_unit", "kids_no_apps", "kids_quiz_h", "kids_quiz_hint", "kids_stage_h", "kids_stage_kg", "kids_stage_primary", "kids_subject_math", "kids_subject_poem", "kids_subject_words", "kids_subject_idiom", "kids_subject_fruit", "kids_settings_h", "kids_quiz_toggle", "kids_blocked", "kids_timed", "sw_always", "sw_always_sub", "sw_weather", "sw_saver_time", "sw_saver_time_sub", "g_source_sub", "icon_h", "icon_library", "icon_own", "icon_custom", "toast_icon_picked", "drop_hint", "drop_sub", "drop_none", "toast_diag_paste", "gate_h", "gate_hint", "gate_enter", "gate_wrong", "gate_wait", "parent_h", "parent_hint", "parent_new", "parent_again", "parent_save", "parent_bad", "parent_ok", "web_h", "web_new", "web_save", "web_bad", "web_ok", "web_hint"];
+const KEYS = ["screensaver", "screensaver_short", "ss_aerial", "ss_photos", "ss_clock", "focus", "focus_high", "focus_standard", "weather", "city_ph", "set", "upload_label", "feedback_h", "feedback_hint", "diag_show", "diag_copy", "diag_github", "hint_aerial", "hint_photos", "hint_clock", "g_live", "g_live_sub", "g_daily", "g_daily_sub", "g_photo", "g_builtin", "g_auto", "toast_wallpaper", "aria_delete", "confirm_delete", "wx_clear", "wx_partlycloudy", "wx_cloudy", "wx_fog", "wx_rain", "wx_snow", "wx_thunder", "wx_chosen", "wx_auto_btn", "toast_auto", "wx_guessed", "wx_none", "tag_source", "aria_rename", "toast_renamed", "toast_name_reset", "toast_rename_fail", "aria_reset_icon", "toast_icon_reset", "focus_hint_standard", "focus_hint_high", "daily_title", "daily_caption", "rotate_title", "rotate_caption", "empty_photos", "add_second", "toast_tv_updated", "sending_n", "toast_added", "toast_no_photos", "toast_send_fail", "toast_city_set", "toast_city_nf", "toast_set_fail", "toast_sending_icon", "toast_icon_set", "toast_icon_bad", "diag_collecting", "toast_diag_fail", "toast_copied", "toast_copy_manual", "language", "hint_follows", "ss_videos", "hint_videos", "videos_h", "videos_upload", "videos_hint", "videos_empty", "confirm_video_delete", "toast_videos_added", "toast_video_bad", "sending_video", "hint_system", "tab_home", "tab_more", "current_wp", "cancel", "save", "name_ph", "rename_hint", "change_icon", "this_tv", "folder_count", "folder_ph", "inputs_h", "inputs_hint", "rename_hint_app", "was_named", "arrange_hint", "arrange_unready", "hidden_h", "hidden_none", "hidden_locked", "show_app", "hide_app", "to_folder", "new_folder", "out_of_folder", "ungroup", "ungroup_confirm", "folder_hint", "toast_hidden", "toast_shown", "toast_in_folder", "toast_out_folder", "toast_ungrouped", "tab_looks", "looks_title", "show_on_home", "source_device", "source_plain", "source_device_hint", "tv_model", "tab_kids", "kids_mode_h", "kids_mode_on", "kids_mode_on_sub", "kids_hint_off", "kids_no_pin", "kids_no_usage", "kids_apps_h", "kids_apps_hint", "kids_restrict", "kids_free", "kids_all_day", "kids_used", "kids_earned", "kids_rule_mode", "kids_mode_slot", "kids_mode_quiz", "kids_mode_both", "kids_rule_unlock", "kids_unlock_pin", "kids_unlock_quiz", "kids_rule_quota", "kids_quota_none", "kids_rule_slots", "kids_slot_add", "kids_slot_remove", "toast_kids_saved", "kids_min_unit", "kids_no_apps", "kids_quiz_h", "kids_quiz_hint", "kids_stage_h", "kids_stage_kg", "kids_stage_primary", "kids_subject_math", "kids_subject_poem", "kids_subject_words", "kids_subject_idiom", "kids_subject_fruit", "kids_settings_h", "kids_quiz_toggle", "kids_blocked", "kids_timed", "sw_always", "sw_always_sub", "sw_weather", "sw_saver_time", "sw_saver_time_sub", "g_source_sub", "icon_h", "icon_library", "icon_own", "icon_custom", "toast_icon_picked", "drop_hint", "drop_sub", "drop_none", "toast_diag_paste", "gate_h", "gate_hint", "gate_enter", "gate_wrong", "gate_wait", "parent_h", "parent_hint", "parent_new", "parent_again", "parent_save", "parent_bad", "parent_ok", "web_h", "web_new", "web_save", "web_bad", "web_ok", "web_hint", "console_default_h", "console_default_body", "console_default_btn"];
 const TEXTS = {
  "zh": [
   "屏幕保护程序",
@@ -649,7 +668,10 @@ const TEXTS = {
   "改网页密码",
   "至少 6 位",
   "网页密码已经改好了，下次打开要用新的",
-  "只影响手机打开这个页面，和电视上的密码是两回事"
+  "只影响手机打开这个页面，和电视上的密码是两回事",
+  "网页密码还是初始的 123456",
+  "它能打开这个页面；电视的家长控制码、儿童模式都在这里改。注意：它和电视上的家长控制码不是同一个密码。把它改成你自己的，之后用新密码进来。",
+  "改密码"
  ],
  "en": [
   "Screensaver",
@@ -852,7 +874,10 @@ const TEXTS = {
   "Change page password",
   "Six characters or more",
   "The page password is changed; the next opening asks for it",
-  "This only opens this page on a phone; the TV's password is a different one"
+  "This only opens this page on a phone; the TV's password is a different one",
+  "The page password is still 123456",
+  "It opens this page, which is where the TV's parent password and the child mode are set. Note that it is not the TV's parent password: those are two separate passwords. Change it to your own and come back with that.",
+  "Change it"
  ],
  "ru": [
   "Заставка",
@@ -1055,7 +1080,10 @@ const TEXTS = {
   "Сменить пароль страницы",
   "Не короче шести знаков",
   "Пароль страницы изменён; в следующий раз спросят его",
-  "Это открывает только эту страницу на телефоне; пароль телевизора — другой"
+  "Это открывает только эту страницу на телефоне; пароль телевизора — другой",
+  "Пароль страницы всё ещё 123456",
+  "Он открывает эту страницу, а здесь меняются родительский пароль телевизора и детский режим. Учтите: это не родительский пароль телевизора, их два разных. Смените его на свой и заходите с ним.",
+  "Сменить"
  ],
  "uk": [
   "Заставка",
@@ -1258,7 +1286,10 @@ const TEXTS = {
   "Змінити пароль сторінки",
   "Щонайменше шість знаків",
   "Пароль сторінки змінено; наступного разу запитають його",
-  "Це відкриває лише цю сторінку на телефоні; пароль телевізора — інший"
+  "Це відкриває лише цю сторінку на телефоні; пароль телевізора — інший",
+  "Пароль сторінки досі 123456",
+  "Він відкриває цю сторінку, а тут змінюються батьківський пароль телевізора й дитячий режим. Зауважте: це не батьківський пароль телевізора, їх два різні. Змініть його на свій і заходьте з ним.",
+  "Змінити"
  ],
  "kk": [
   "Экран қорғаушы",
@@ -1461,7 +1492,10 @@ const TEXTS = {
   "Парақша құпиясөзін өзгерту",
   "Кемінде алты таңба",
   "Парақша құпиясөзі өзгертілді; келесі жолы жаңасы сұралады",
-  "Бұл телефонда тек осы парақшаны ашады; теледидар құпиясөзі — бөлек"
+  "Бұл телефонда тек осы парақшаны ашады; теледидар құпиясөзі — бөлек",
+  "Парақша құпиясөзі әлі 123456",
+  "Ол осы парақшаны ашады, ал теледидардың ата-ана құпиясөзі мен балалар режимі осында өзгертіледі. Назар аударыңыз: бұл теледидардың ата-ана құпиясөзі емес, олар екі бөлек құпиясөз. Оны өзіңіздің құпиясөзіңізге ауыстырып, сонымен кіріңіз.",
+  "Өзгерту"
  ]
 };
 const LANGS = Object.keys(TEXTS);
@@ -2467,6 +2501,11 @@ function sortableGrid(grid, keys, onMove, onTap) {
   });
 }
 
+/* The console starts on a password everyone knows, and that password is not the TV's parent one.
+   [consoleDefault] comes from the TV: while it is true the notice stays up, on every tab. */
+function renderConsoleNotice() {
+  $('#consoleNotice').hidden = !state.consoleDefault;
+}
 function render() {
   if (!state) return;
   // The page polls; skip the rebuild when nothing changed, so pictures do not flicker and taps are not lost.
@@ -2479,6 +2518,7 @@ function render() {
   renderInputs();
   renderKids();
   renderArrange(false);
+  renderConsoleNotice();
 }
 
 /* The page's password, typed once: the session it sets holds for the evening. */
@@ -2498,7 +2538,7 @@ $('#parentSave').addEventListener('click', async () => {
   const password = $('#parentNew').value.trim();
   if (password !== $('#parentAgain').value.trim() || !/^\d{6}$/.test(password)) { toast(t('parent_bad')); return; }
   try {
-    await api('api/parent-password', { password });
+    take(await api('api/parent-password', { password }));
     $('#parentNew').value = ''; $('#parentAgain').value = '';
     toast(t('parent_ok'));
   } catch (e) { toast(t('parent_bad')); }
@@ -2509,10 +2549,21 @@ $('#webSave').addEventListener('click', async () => {
   const password = $('#webNew').value.trim();
   if (password.length < 6) { toast(t('web_bad')); return; }
   try {
-    await api('api/web-password', { password });
+    // The answer says whether it is still the default: that is what takes the notice down.
+    take(await api('api/web-password', { password }));
     $('#webNew').value = '';
     toast(t('web_ok'));
   } catch (e) { toast(t('web_bad')); }
+});
+
+/* The notice's button: the form that changes it is under More, at the bottom. */
+$('#consoleChange').addEventListener('click', () => {
+  show('more');
+  setTimeout(() => {
+    const input = $('#webNew');
+    input.scrollIntoView({ block: 'center' });
+    input.focus();
+  }, 80);
 });
 
 initLangSwitch();
