@@ -300,6 +300,8 @@ fun HomeScreen(
     val requesters = remember { HashMap<String, FocusRequester>() }
     fun requester(key: String) = requesters.getOrPut(key) { FocusRequester() }
     val pillRequester = remember { FocusRequester() }
+    // The shuffle left of the pill: a new wallpaper in one press (HomeChrome.ShuffleButton).
+    val shuffleRequester = remember { FocusRequester() }
     val appContext = LocalContext.current
     val firmwareInputPanel = remember {
         SystemProbe.tclInputPanel(appContext) != null || SystemProbe.coocaaInputPanel(appContext)
@@ -311,6 +313,8 @@ fun HomeScreen(
     var focusAfterOverlay by remember { mutableStateOf<String?>(null) }
     var indexAfterOverlay by remember { mutableStateOf(0) }
     var pillFocused by remember { mutableStateOf(false) }
+    // Focus up in the top right corner is on the shuffle rather than the pill: where it goes back to.
+    var shuffleFocused by remember { mutableStateOf(false) }
     var lastFocusedIndex by remember { mutableStateOf(0) }
     // The time-up screen the parent menu stands in for, so extending can hand that app back.
     var timeUpForParent by remember { mutableStateOf<Overlay.TimeUp?>(null) }
@@ -421,6 +425,23 @@ fun HomeScreen(
         runCatching { requester(app.key).requestFocus() }
     }
 
+    /**
+     * Another photograph from Pap.er as the wallpaper. The TV has only a remote, and choosing one
+     * meant opening Personalize every time (the owner, 2026-10-30): this is one press from Home.
+     * Asking the API and downloading take a few seconds, which the button breathes through.
+     */
+    fun shuffleWallpaper() {
+        if (Wallpapers.shuffling) return
+        scope.launch {
+            when (Wallpapers.shufflePaper()) {
+                Wallpapers.Shuffle.Fresh -> Unit
+                // Offline: one already on disk, so the press still changed something.
+                Wallpapers.Shuffle.Kept -> vm.notify(appContext.getString(R.string.wp_shuffle_kept))
+                Wallpapers.Shuffle.Failed -> vm.notify(appContext.getString(R.string.wp_shuffle_failed))
+            }
+        }
+    }
+
     // First focus once the apps are in; afterwards, put focus back wherever it was when an overlay closes.
     LaunchedEffect(vm.loaded, overlay) {
         if (!vm.loaded || overlay != Overlay.None) return@LaunchedEffect
@@ -431,7 +452,9 @@ fun HomeScreen(
         val index = apps.indexOfFirst { it.key == focusedKey }
         // A tile that went while the overlay was up (hidden, put in a folder, a folder ungrouped)
         // leaves focus where it was.
-        if (pillFocused && focusedKey != null) runCatching { pillRequester.requestFocus() }
+        if (pillFocused && focusedKey != null) runCatching {
+            (if (shuffleFocused) shuffleRequester else pillRequester).requestFocus()
+        }
         else focusApp(if (index >= 0) index else if (wanted != null) indexAfterOverlay else lastFocusedIndex)
     }
     // A folder whose last app left closes.
@@ -840,6 +863,9 @@ fun HomeScreen(
                             // the focused one alone there, but it sat oddly on the glass).
                             showName = plate == null || index >= columns * metrics.shelfRows || plateNames,
                             nameOnPlate = plate != null && index < columns * metrics.shelfRows,
+                            // Up from the top row goes to the pill wherever the row is on the
+                            // screen: the shuffle beside it must not become what Up lands on.
+                            upFocus = if (index < columns) pillRequester else null,
                         )
                     }
                 }
@@ -878,6 +904,31 @@ fun HomeScreen(
                 enabled = KidsMode.enabled,
                 modifier = Modifier.padding(end = 14.dp),
             )
+            // One press for another wallpaper. Left of the pill, and reached from it with Left:
+            // Up from the top row still leads to the pill, which opens Control Center.
+            ShuffleButton(
+                enabled = gridEnabled && moving == null,
+                focusRequester = shuffleRequester,
+                modifier = Modifier
+                    .padding(end = 12.dp)
+                    .focusProperties {
+                        right = pillRequester
+                        // Down goes back to the tile Up came from, as from the pill (#703).
+                        val key = focusedKey
+                        if (key != null && apps.indexOfFirst { it.key == key } in 0 until columns) down = requester(key)
+                    }
+                    .graphicsLayer {
+                        alpha = 1f - (toSaver.value * 2f).coerceIn(0f, 1f)
+                        compositingStrategy = CompositingStrategy.ModulateAlpha
+                    },
+                onFocused = { gained ->
+                    if (gained) {
+                        pillFocused = true
+                        shuffleFocused = true
+                    }
+                },
+                onClick = { shuffleWallpaper() },
+            )
             StatusPill(
                 now = now,
                 network = vm.network,
@@ -891,6 +942,8 @@ fun HomeScreen(
                     .focusProperties {
                         val key = focusedKey
                         if (key != null && apps.indexOfFirst { it.key == key } in 0 until columns) down = requester(key)
+                        // Left is the shuffle; the two make one corner, as on tvOS.
+                        left = shuffleRequester
                     }
                     .graphicsLayer {
                         alpha = 1f - (toSaver.value * 2f).coerceIn(0f, 1f)
@@ -904,6 +957,7 @@ fun HomeScreen(
                             if (apps.isNotEmpty()) focusApp(0)
                         } else {
                             pillFocused = true
+                            shuffleFocused = false
                         }
                     }
                 },
@@ -911,6 +965,7 @@ fun HomeScreen(
                     // A tap focuses the pill and opens Control Center in the same frame, before
                     // onFocused hears of it: note it here so focus comes back to the pill.
                     pillFocused = true
+                    shuffleFocused = false
                     vm.overlay = Overlay.ControlCenter()
                 },
             )

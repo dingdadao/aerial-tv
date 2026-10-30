@@ -113,6 +113,9 @@ import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import app.orchard.tv.wallpaper.Wallpapers
 
 /** Tick on the minute and refresh immediately after waking or a system clock correction. */
 @Composable
@@ -787,6 +790,64 @@ fun VpnBadge(color: Color, modifier: Modifier = Modifier, fontSize: TextUnit = 1
             .border(1.2.dp, color, RoundedCornerShape(4.dp))
             .padding(horizontal = 4.dp, vertical = 1.dp),
     )
+}
+
+/**
+ * Top right, just left of the pill: changes the wallpaper to another photograph from Pap.er. A
+ * remote is all a TV has, and going through Personalize for a new picture every time was the
+ * owner's complaint (2026-10-30): one press here is a new wallpaper.
+ *
+ * Asking the API for one and downloading it takes a few seconds over a TV's network, so the button
+ * breathes while it is under way — a soft halo behind it swelling and fading, the glyph with it —
+ * and stops as soon as the new picture is behind Home. Presses are ignored meanwhile, and where
+ * nothing could be had the caller says so.
+ */
+@Composable
+fun ShuffleButton(
+    enabled: Boolean,
+    focusRequester: FocusRequester,
+    onFocused: (Boolean) -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val loading = Wallpapers.shuffling
+    val reduced = LocalReducedMotion.current
+    val glow = remember { Animatable(1f) }
+    // Only while it is under way: an idle Home runs no animation at all.
+    LaunchedEffect(loading, reduced) {
+        if (!loading || reduced) {
+            glow.snapTo(1f)
+            return@LaunchedEffect
+        }
+        while (true) {
+            glow.animateTo(0.4f, tween(820, easing = Motion.EaseInOut))
+            glow.animateTo(1f, tween(820, easing = Motion.EaseInOut))
+        }
+    }
+    Pressable(
+        onClick = onClick,
+        // Still focusable while it is under way — it is what has focus, having just been pressed —
+        // and the click it would take again is dropped by the caller (Wallpapers.shufflePaper).
+        enabled = enabled,
+        focusRequester = focusRequester,
+        focusedScale = 1.08f,
+        modifier = modifier,
+    ) { state ->
+        LaunchedEffect(state.focused) { onFocused(state.focused) }
+        val focus by animateFloatAsState(if (state.focused) 1f else 0f, tween(160, easing = Motion.EaseOut), label = "shuffle-focus")
+        val breathe = if (loading) glow.value else 1f
+        // Focus fills it white as the pill beside it; with a photograph on its way, that white (or
+        // the faint halo it has without focus) breathes, so the press is answered either way.
+        val white = focus * (if (loading) 0.45f + 0.55f * breathe else 1f) +
+            (1f - focus) * (if (loading) 0.16f * breathe else 0f)
+        val fg = if (focus > 0.5f) Palette.OnFocus else Color.White.copy(alpha = if (loading) 0.4f + 0.5f * breathe else 0.9f)
+        Box(
+            Modifier.size(34.dp).clip(CircleShape).background(Palette.Focus.copy(alpha = white.coerceIn(0f, 1f))),
+            contentAlignment = Alignment.Center,
+        ) {
+            GlyphIcon(Glyph.Shuffle, fg, 17.dp)
+        }
+    }
 }
 
 /**

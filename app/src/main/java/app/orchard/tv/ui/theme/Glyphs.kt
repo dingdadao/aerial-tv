@@ -33,7 +33,7 @@ import kotlin.math.roundToInt
  * closest to SF Symbols among icons an Android app may ship (SF Symbols are licensed for Apple
  * platforms only). Vector paths, rasterized at each UI size, in a square box.
  */
-enum class Glyph { Folder, Pencil, Wifi, Ethernet, Offline, Gear, Input, Speaker, SpeakerMuted, Switches, EyeSlash, Move, Info, Trash, ChevronRight, ChevronLeft, Check, Hdmi, Antenna, Av, Sun, Photo, Play, Bag, CloudSun, Calendar, Cast, Shield, Globe, Moon, Cloud, CloudRain, CloudSnow, CloudFog, CloudBolt, Download, Power, Usb, Home, Kids }
+enum class Glyph { Folder, Pencil, Wifi, Ethernet, Offline, Gear, Input, Speaker, SpeakerMuted, Switches, EyeSlash, Move, Info, Trash, ChevronRight, ChevronLeft, Check, Hdmi, Antenna, Av, Sun, Photo, Play, Bag, CloudSun, Calendar, Cast, Shield, Globe, Moon, Cloud, CloudRain, CloudSnow, CloudFog, CloudBolt, Download, Power, Usb, Home, Kids, Shuffle }
 
 @Composable
 fun GlyphIcon(glyph: Glyph, color: Color, size: Dp, modifier: Modifier = Modifier, level: Float = 1f) {
@@ -76,6 +76,7 @@ private fun glyphPath(glyph: Glyph, level: Float): String? {
         Glyph.Trash -> GlyphPaths.DELETE
         Glyph.ChevronRight -> GlyphPaths.CHEVRON_RIGHT
         Glyph.ChevronLeft -> GlyphPaths.CHEVRON_LEFT
+        Glyph.Shuffle -> GlyphPaths.SHUFFLE
         Glyph.Check -> GlyphPaths.CHECK
         Glyph.Hdmi -> GlyphPaths.HDMI
         Glyph.Antenna -> GlyphPaths.ANTENNA

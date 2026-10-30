@@ -77,7 +77,10 @@ class PhoneServer private constructor(private val context: Context, private val 
                 path.startsWith("/thumb/") -> thumb(path.removePrefix("/thumb/"))
                 session.method == Method.POST && path == "/api/wallpaper" -> {
                     val id = form(session)["id"].orEmpty()
-                    onMain { Wallpapers.select(id) }
+                    // The Pap.er card asks for a new photograph rather than naming one: the same
+                    // shuffle as the button beside the clock on Home.
+                    if (id == Wallpapers.PAPER_RANDOM) runBlocking(Dispatchers.Main) { Wallpapers.shufflePaper() }
+                    else onMain { Wallpapers.select(id) }
                     json(state())
                 }
                 session.method == Method.POST && path == "/api/screensaver" -> {

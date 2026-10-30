@@ -394,13 +394,16 @@ private fun WallpaperRows(takeFocus: Boolean) {
     val dailyTitle = stringResource(R.string.wp_daily_latest)
     val rotateTitle = stringResource(R.string.wp_photos_rotate)
     val videosTitle = stringResource(R.string.wp_videos_rotate)
-    val list = remember(items, selected, dailyTitle, rotateTitle, videosTitle) {
+    val paperTitle = stringResource(R.string.wp_paper_random)
+    val list = remember(items, selected, dailyTitle, rotateTitle, videosTitle, paperTitle) {
         buildList {
             addAll(items.filter { it.kind == WallpaperKind.Live })
             // Each video on its own, and with two or more one card that plays them in turn (#762).
             val videos = items.filter { it.kind == WallpaperKind.Video && it.id != Wallpapers.VIDEOS }
             if (videos.size > 1 || selected == Wallpapers.VIDEOS) add(Wallpaper(Wallpapers.VIDEOS, WallpaperKind.Video, videosTitle))
             addAll(videos)
+            // Pap.er: one press, one new photograph — the same as the shuffle on Home.
+            add(Wallpaper(Wallpapers.PAPER_RANDOM, WallpaperKind.Paper, paperTitle))
             if (items.any { it.kind == WallpaperKind.Daily }) add(Wallpaper(Wallpapers.LATEST_DAILY, WallpaperKind.Daily, dailyTitle))
             addAll(items.filter { it.kind == WallpaperKind.Daily && it.id == selected })
             val photos = items.filter { it.kind == WallpaperKind.Photo }
@@ -437,6 +440,8 @@ private fun wallpaperNote(wp: Wallpaper): String? = when {
     wp.kind == WallpaperKind.Live -> stringResource(R.string.wp_live)
     wp.id == Wallpapers.VIDEOS -> stringResource(R.string.wp_videos_note)
     wp.kind == WallpaperKind.Video -> stringResource(R.string.wp_video_note)
+    wp.id == Wallpapers.PAPER_RANDOM -> stringResource(R.string.wp_paper_note)
+    wp.kind == WallpaperKind.Paper -> wp.caption
     wp.kind == WallpaperKind.Source -> stringResource(R.string.wp_source_note)
     wp.id == Wallpapers.LATEST_DAILY -> stringResource(R.string.wp_daily_note)
     wp.id == Wallpapers.ROTATE_PHOTOS -> stringResource(R.string.wp_photos_rotate_note)
@@ -448,11 +453,19 @@ private fun wallpaperNote(wp: Wallpaper): String? = when {
 
 @Composable
 private fun WallpaperCard(wp: Wallpaper, focusRequester: FocusRequester?, onFocused: () -> Unit) {
-    val selected = Wallpapers.selectedId == wp.id
+    // The Pap.er card is an action rather than a picture: it asks for a new photograph, and it
+    // counts as chosen while one of them is the wallpaper.
+    val shuffle = wp.id == Wallpapers.PAPER_RANDOM
+    val selected = if (shuffle) Wallpapers.isPaper() else Wallpapers.selectedId == wp.id
+    val scope = rememberCoroutineScope()
     val thumb by produceState<ImageBitmap?>(null, wp.id, Wallpapers.items) {
         value = withContext(Dispatchers.Default) { Wallpapers.thumbnail(wp.id)?.asImageBitmap() }
     }
-    Pressable(onClick = { Wallpapers.select(wp.id) }, focusRequester = focusRequester, focusedScale = 1.08f) { state ->
+    Pressable(
+        onClick = { if (shuffle) scope.launch { Wallpapers.shufflePaper() } else Wallpapers.select(wp.id) },
+        focusRequester = focusRequester,
+        focusedScale = 1.08f,
+    ) { state ->
         LaunchedEffect(state.focused) { if (state.focused) onFocused() }
         Column(Modifier.width(168.dp)) {
             Box(
@@ -484,6 +497,10 @@ private fun WallpaperCard(wp: Wallpaper, focusRequester: FocusRequester?, onFocu
                 // The aerial wallpaper moves; its card shows the last frame it stopped on.
                 if (wp.kind == WallpaperKind.Live || wp.kind == WallpaperKind.Video) {
                     GlyphIcon(Glyph.Play, Color.White, 22.dp, Modifier.align(Alignment.BottomStart).padding(7.dp))
+                }
+                // A new photograph with each press, as with the shuffle on Home.
+                if (shuffle) {
+                    GlyphIcon(Glyph.Shuffle, Color.White, 22.dp, Modifier.align(Alignment.BottomStart).padding(7.dp))
                 }
                 // An input's picture cannot be copied for a card: its mark over the dark picture.
                 if (wp.kind == WallpaperKind.Source) {

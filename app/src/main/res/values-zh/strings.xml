@@ -314,4 +314,8 @@
     <string name="st_play_hint">静止时：在第一排（双排时前两排）停 10 秒后播放，按键停下。一直：按键不停，背景压暗一点；再往下进入其余 App 时停下。</string>
     <string name="ss_show_time">时间</string>
     <string name="ss_show_time_hint">航拍和照片屏保上的时间。时间和地名会不时挪一点位置，避免烧屏。</string>
+    <string name="wp_paper_random">Pap.er 壁纸</string>
+    <string name="wp_paper_note">每次选中这张卡片，或按主屏幕右上角的随机按钮，都会从 Pap.er 换一张新照片。需要电视联网；没有网络时用已经下载好的那张。</string>
+    <string name="wp_shuffle_kept">没有网络，换成了已下载的一张</string>
+    <string name="wp_shuffle_failed">没换到新照片，检查一下电视的网络再试</string>
 </resources>

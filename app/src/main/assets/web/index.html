@@ -465,7 +465,7 @@ let state = null, stateJson = '';
 
 // The language: ?lang=ru in the address, else the one picked under More (kept on the phone), else the
 // first of the phone's preferred languages that has a table, else English. Keys are in KEYS, one array of texts per language.
-const KEYS = ["screensaver", "screensaver_short", "ss_aerial", "ss_photos", "ss_clock", "focus", "focus_high", "focus_standard", "weather", "city_ph", "set", "upload_label", "feedback_h", "feedback_hint", "diag_show", "diag_copy", "diag_github", "hint_aerial", "hint_photos", "hint_clock", "g_live", "g_live_sub", "g_daily", "g_daily_sub", "g_photo", "g_builtin", "g_auto", "toast_wallpaper", "aria_delete", "confirm_delete", "wx_clear", "wx_partlycloudy", "wx_cloudy", "wx_fog", "wx_rain", "wx_snow", "wx_thunder", "wx_chosen", "wx_auto_btn", "toast_auto", "wx_guessed", "wx_none", "tag_source", "aria_rename", "toast_renamed", "toast_name_reset", "toast_rename_fail", "aria_reset_icon", "toast_icon_reset", "focus_hint_standard", "focus_hint_high", "daily_title", "daily_caption", "rotate_title", "rotate_caption", "empty_photos", "add_second", "toast_tv_updated", "sending_n", "toast_added", "toast_no_photos", "toast_send_fail", "toast_city_set", "toast_city_nf", "toast_set_fail", "toast_sending_icon", "toast_icon_set", "toast_icon_bad", "diag_collecting", "toast_diag_fail", "toast_copied", "toast_copy_manual", "language", "hint_follows", "ss_videos", "hint_videos", "videos_h", "videos_upload", "videos_hint", "videos_empty", "confirm_video_delete", "toast_videos_added", "toast_video_bad", "sending_video", "hint_system", "tab_home", "tab_more", "current_wp", "cancel", "save", "name_ph", "rename_hint", "change_icon", "this_tv", "folder_count", "folder_ph", "inputs_h", "inputs_hint", "rename_hint_app", "was_named", "arrange_hint", "arrange_unready", "hidden_h", "hidden_none", "hidden_locked", "show_app", "hide_app", "to_folder", "new_folder", "out_of_folder", "ungroup", "ungroup_confirm", "folder_hint", "toast_hidden", "toast_shown", "toast_in_folder", "toast_out_folder", "toast_ungrouped", "tab_looks", "looks_title", "show_on_home", "source_device", "source_plain", "source_device_hint", "tv_model", "tab_kids", "kids_mode_h", "kids_mode_on", "kids_mode_on_sub", "kids_hint_off", "kids_no_pin", "kids_no_usage", "kids_apps_h", "kids_apps_hint", "kids_restrict", "kids_free", "kids_all_day", "kids_used", "kids_earned", "kids_rule_mode", "kids_mode_slot", "kids_mode_quiz", "kids_mode_both", "kids_rule_unlock", "kids_unlock_pin", "kids_unlock_quiz", "kids_rule_quota", "kids_quota_none", "kids_rule_slots", "kids_slot_add", "kids_slot_remove", "toast_kids_saved", "kids_min_unit", "kids_no_apps", "kids_quiz_h", "kids_quiz_hint", "kids_stage_h", "kids_stage_kg", "kids_stage_primary", "kids_subject_math", "kids_subject_poem", "kids_subject_words", "kids_subject_idiom", "kids_subject_fruit", "kids_settings_h", "kids_quiz_toggle", "kids_blocked", "kids_timed", "sw_always", "sw_always_sub", "sw_weather", "sw_saver_time", "sw_saver_time_sub", "g_source_sub", "icon_h", "icon_library", "icon_own", "icon_custom", "toast_icon_picked", "drop_hint", "drop_sub", "drop_none", "toast_diag_paste", "gate_h", "gate_hint", "gate_enter", "gate_wrong", "gate_wait", "parent_h", "parent_hint", "parent_new", "parent_again", "parent_save", "parent_bad", "parent_ok", "web_h", "web_new", "web_save", "web_bad", "web_ok", "web_hint", "console_default_h", "console_default_body", "console_default_btn"];
+const KEYS = ["screensaver", "screensaver_short", "ss_aerial", "ss_photos", "ss_clock", "focus", "focus_high", "focus_standard", "weather", "city_ph", "set", "upload_label", "feedback_h", "feedback_hint", "diag_show", "diag_copy", "diag_github", "hint_aerial", "hint_photos", "hint_clock", "g_live", "g_live_sub", "g_daily", "g_daily_sub", "g_photo", "g_builtin", "g_auto", "toast_wallpaper", "aria_delete", "confirm_delete", "wx_clear", "wx_partlycloudy", "wx_cloudy", "wx_fog", "wx_rain", "wx_snow", "wx_thunder", "wx_chosen", "wx_auto_btn", "toast_auto", "wx_guessed", "wx_none", "tag_source", "aria_rename", "toast_renamed", "toast_name_reset", "toast_rename_fail", "aria_reset_icon", "toast_icon_reset", "focus_hint_standard", "focus_hint_high", "daily_title", "daily_caption", "rotate_title", "rotate_caption", "empty_photos", "add_second", "toast_tv_updated", "sending_n", "toast_added", "toast_no_photos", "toast_send_fail", "toast_city_set", "toast_city_nf", "toast_set_fail", "toast_sending_icon", "toast_icon_set", "toast_icon_bad", "diag_collecting", "toast_diag_fail", "toast_copied", "toast_copy_manual", "language", "hint_follows", "ss_videos", "hint_videos", "videos_h", "videos_upload", "videos_hint", "videos_empty", "confirm_video_delete", "toast_videos_added", "toast_video_bad", "sending_video", "hint_system", "tab_home", "tab_more", "current_wp", "cancel", "save", "name_ph", "rename_hint", "change_icon", "this_tv", "folder_count", "folder_ph", "inputs_h", "inputs_hint", "rename_hint_app", "was_named", "arrange_hint", "arrange_unready", "hidden_h", "hidden_none", "hidden_locked", "show_app", "hide_app", "to_folder", "new_folder", "out_of_folder", "ungroup", "ungroup_confirm", "folder_hint", "toast_hidden", "toast_shown", "toast_in_folder", "toast_out_folder", "toast_ungrouped", "tab_looks", "looks_title", "show_on_home", "source_device", "source_plain", "source_device_hint", "tv_model", "tab_kids", "kids_mode_h", "kids_mode_on", "kids_mode_on_sub", "kids_hint_off", "kids_no_pin", "kids_no_usage", "kids_apps_h", "kids_apps_hint", "kids_restrict", "kids_free", "kids_all_day", "kids_used", "kids_earned", "kids_rule_mode", "kids_mode_slot", "kids_mode_quiz", "kids_mode_both", "kids_rule_unlock", "kids_unlock_pin", "kids_unlock_quiz", "kids_rule_quota", "kids_quota_none", "kids_rule_slots", "kids_slot_add", "kids_slot_remove", "toast_kids_saved", "kids_min_unit", "kids_no_apps", "kids_quiz_h", "kids_quiz_hint", "kids_stage_h", "kids_stage_kg", "kids_stage_primary", "kids_subject_math", "kids_subject_poem", "kids_subject_words", "kids_subject_idiom", "kids_subject_fruit", "kids_settings_h", "kids_quiz_toggle", "kids_blocked", "kids_timed", "sw_always", "sw_always_sub", "sw_weather", "sw_saver_time", "sw_saver_time_sub", "g_source_sub", "icon_h", "icon_library", "icon_own", "icon_custom", "toast_icon_picked", "drop_hint", "drop_sub", "drop_none", "toast_diag_paste", "gate_h", "gate_hint", "gate_enter", "gate_wrong", "gate_wait", "parent_h", "parent_hint", "parent_new", "parent_again", "parent_save", "parent_bad", "parent_ok", "web_h", "web_new", "web_save", "web_bad", "web_ok", "web_hint", "console_default_h", "console_default_body", "console_default_btn", "g_paper", "g_paper_sub", "paper_shuffle"];
 const TEXTS = {
  "zh": [
   "屏幕保护程序",
@@ -671,7 +671,10 @@ const TEXTS = {
   "只影响手机打开这个页面，和电视上的密码是两回事",
   "网页密码还是初始的 123456",
   "它能打开这个页面；电视的家长控制码、儿童模式都在这里改。注意：它和电视上的家长控制码不是同一个密码。把它改成你自己的，之后用新密码进来。",
-  "改密码"
+  "改密码",
+  "Pap.er 壁纸",
+  "按下就换一张新照片，电视要联网。",
+  "换一张"
  ],
  "en": [
   "Screensaver",
@@ -877,7 +880,10 @@ const TEXTS = {
   "This only opens this page on a phone; the TV's password is a different one",
   "The page password is still 123456",
   "It opens this page, which is where the TV's parent password and the child mode are set. Note that it is not the TV's parent password: those are two separate passwords. Change it to your own and come back with that.",
-  "Change it"
+  "Change it",
+  "Pap.er",
+  "Tap for a new photograph; the TV has to be online.",
+  "New one"
  ],
  "ru": [
   "Заставка",
@@ -1083,7 +1089,10 @@ const TEXTS = {
   "Это открывает только эту страницу на телефоне; пароль телевизора — другой",
   "Пароль страницы всё ещё 123456",
   "Он открывает эту страницу, а здесь меняются родительский пароль телевизора и детский режим. Учтите: это не родительский пароль телевизора, их два разных. Смените его на свой и заходите с ним.",
-  "Сменить"
+  "Сменить",
+  "Pap.er",
+  "Нажмите, чтобы получить новую фотографию; телевизор должен быть в сети.",
+  "Новая"
  ],
  "uk": [
   "Заставка",
@@ -1289,7 +1298,10 @@ const TEXTS = {
   "Це відкриває лише цю сторінку на телефоні; пароль телевізора — інший",
   "Пароль сторінки досі 123456",
   "Він відкриває цю сторінку, а тут змінюються батьківський пароль телевізора й дитячий режим. Зауважте: це не батьківський пароль телевізора, їх два різні. Змініть його на свій і заходьте з ним.",
-  "Змінити"
+  "Змінити",
+  "Pap.er",
+  "Натисніть, щоб отримати нову фотографію; телевізор має бути в мережі.",
+  "Нова"
  ],
  "kk": [
   "Экран қорғаушы",
@@ -1495,7 +1507,10 @@ const TEXTS = {
   "Бұл телефонда тек осы парақшаны ашады; теледидар құпиясөзі — бөлек",
   "Парақша құпиясөзі әлі 123456",
   "Ол осы парақшаны ашады, ал теледидардың ата-ана құпиясөзі мен балалар режимі осында өзгертіледі. Назар аударыңыз: бұл теледидардың ата-ана құпиясөзі емес, олар екі бөлек құпиясөз. Оны өзіңіздің құпиясөзіңізге ауыстырып, сонымен кіріңіз.",
-  "Өзгерту"
+  "Өзгерту",
+  "Pap.er",
+  "Жаңа сурет алу үшін басыңыз; теледидар желіде болуы керек.",
+  "Жаңасы"
  ]
 };
 const LANGS = Object.keys(TEXTS);
@@ -1537,6 +1552,7 @@ const hints = { aerial: t('hint_aerial'), photos: t('hint_photos'), clock: t('hi
 const groups = [
   ['live', t('g_live'), t('g_live_sub')],
   ['daily', t('g_daily'), t('g_daily_sub')],
+  ['paper', t('g_paper'), t('g_paper_sub')],
   ['photo', t('g_photo'), ''],
   ['builtin', t('g_builtin'), ''],
   ['auto', t('g_auto'), ''],
@@ -1723,6 +1739,8 @@ function renderWallpapers() {
     // Each video on its own; the card that plays them in turn only for two or more (#762), as on the TV.
     if (kind === 'live' && list.filter(w => w.kind === 'video').length < 3 && state.selected !== 'videos:mine') list = list.filter(w => w.id !== 'videos:mine');
     if (kind === 'daily' && list.length) list = [{ id: state.latestDaily, kind: 'daily', title: t('daily_title'), caption: t('daily_caption') }, ...list];
+    // Pap.er: a card that asks for a new photograph, as the shuffle on the TV, then what is kept.
+    if (kind === 'paper') list = [{ id: 'paper:random', kind: 'paper', title: t('paper_shuffle') }, ...list];
     // Two or more photos: one a day, as on the TV (#27, #194).
     if (kind === 'photo' && list.length > 1) list = [{ id: state.rotatePhotos, kind: 'photos', title: t('rotate_title'), caption: t('rotate_caption') }, ...list];
     if (!list.length && kind !== 'photo') continue;

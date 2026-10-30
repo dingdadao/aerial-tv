@@ -35,7 +35,7 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-enum class WallpaperKind { Daily, Builtin, Photo, Auto, Live, Video, Source }
+enum class WallpaperKind { Daily, Builtin, Photo, Auto, Live, Video, Source, Paper }
 
 data class Wallpaper(
     val id: String,
@@ -69,6 +69,9 @@ enum class ScreensaverMode(val key: String) {
  * - Video: the owner's own films, sent from the phone (ScreensaverVideos), moving the same way
  *   (ui/home/VideoWallpaper.kt), with the frame they stopped on as the picture (issues #410, #583).
  *   "videos:mine" plays all of them in turn; "video:<id>" just that one, on a loop (issue #762).
+ * - Paper: a photograph from Pap.er (api.paperapp.net), kept on disk ([Papers]). "paper:random" is
+ *   the card that asks for a new one rather than a picture of its own; the shuffle on Home
+ *   ([shufflePaper]) picks one, and "paper:<id>" is what it picked.
  * - Source: a TV input's picture behind Home, a set-top box on HDMI (ui/home/SourceWallpaper.kt,
  *   issue #267). Only inputs Android lists can be shown; its picture is a dark built-in one.
  *
@@ -84,6 +87,13 @@ object Wallpapers {
     const val VIDEOS = "videos:mine"
     const val VIDEO_PREFIX = "video:"
     const val SOURCE_PREFIX = "source:"
+    /**
+     * The Pap.er card: what a shuffle starts from, and what the picker shows for the photographs
+     * that source keeps ([Papers]). It is not a picture itself — resolving it hands back the newest
+     * one kept, for the card's thumbnail.
+     */
+    const val PAPER_RANDOM = "paper:random"
+    const val PAPER_PREFIX = "paper:"
     /** The picture under a TV input's, for the glass and while the input has nothing to show. */
     private const val SOURCE_PICTURE = "hills_night"
     private const val FOLLOW = "follow"
@@ -153,6 +163,9 @@ object Wallpapers {
 
     fun isSource(id: String = selectedId) = id.startsWith(SOURCE_PREFIX)
 
+    /** A photograph from Pap.er is the wallpaper ([PAPER_PREFIX], [PAPER_RANDOM]). */
+    fun isPaper(id: String = selectedId) = id.startsWith(PAPER_PREFIX)
+
     /** The TV input whose picture is the wallpaper, or null. */
     val sourceInput: String? get() = selectedId.takeIf(::isSource)?.removePrefix(SOURCE_PREFIX)
 
@@ -179,6 +192,7 @@ object Wallpapers {
         if (started) return
         started = true
         app = context.applicationContext
+        Papers.init(app)
         // Home drawn at the panel's size (UhdCanvas) gets pictures of that size.
         val scale = UhdCanvas.scale(context)
         context.resources.displayMetrics.let {
@@ -198,6 +212,10 @@ object Wallpapers {
         loadBaked()
         rebuildBackdrop()
         scope.launch { refreshDaily() }
+        // The first run has no Pap.er photograph yet: one is fetched so that the picker's card has
+        // a picture rather than nothing, and a shuffle on a TV without a network has one to fall
+        // back on.
+        scope.launch { if (Papers.all().isEmpty()) prefetchPaper() }
         scope.launch(Dispatchers.IO) { clearStaleUploads() }
         // Installs from before 1.42 have a baked picture but no copy yet.
         scope.launch(Dispatchers.IO) { keepForLockedBoot() }
@@ -221,6 +239,63 @@ object Wallpapers {
         selectedId = id
         prefs.edit { putString("selected", id) }
         rebuildBackdrop()
+    }
+
+    // ---- Pap.er ----
+
+    /** How a shuffle went: a new photograph, one already on disk, or nothing at all. */
+    enum class Shuffle { Fresh, Kept, Failed }
+
+    /**
+     * A shuffle is asking Pap.er for a photograph and putting it up. Home's shuffle button
+     * breathes while it is true, and stops once the new picture is behind Home.
+     */
+    var shuffling by mutableStateOf(false); private set
+
+    /**
+     * Changes the wallpaper to another photograph from Pap.er, returning once Home has its
+     * picture. With no network (or the API answering with something other than photographs) one
+     * of those already on disk is put up instead, so the button still does something on a TV whose
+     * network is down; with none on disk it does nothing, and the caller says so.
+     */
+    suspend fun shufflePaper(): Shuffle {
+        if (!started || shuffling) return Shuffle.Failed
+        shuffling = true
+        try {
+            val shot = runCatching { Papers.fetch() }
+                .onFailure { Log.w(TAG, "no photograph from Pap.er", it) }
+                .getOrNull()
+            if (shot != null) {
+                synchronized(thumbs) { thumbs.remove(PAPER_RANDOM) }
+                rebuildList()
+                putUp(PAPER_PREFIX + shot.id)
+                return Shuffle.Fresh
+            }
+            // Nothing new: another of the ones kept, never the one already showing.
+            val kept = Papers.all().map { PAPER_PREFIX + it.id }
+            val other = kept.filter { it != selectedId }.randomOrNull() ?: kept.randomOrNull()
+                ?: return Shuffle.Failed
+            if (other == selectedId) return Shuffle.Failed
+            putUp(other)
+            return Shuffle.Kept
+        } finally {
+            shuffling = false
+        }
+    }
+
+    /** One photograph, kept for the picker's card and for a shuffle without a network. */
+    private suspend fun prefetchPaper() {
+        if (Papers.fetch() == null) return
+        synchronized(thumbs) { thumbs.remove(PAPER_RANDOM) }
+        rebuildList()
+        if (isPaper()) rebuildBackdrop()
+    }
+
+    /** Selects [id] and returns once Home has its picture: a shuffle's breathing stops then. */
+    private suspend fun putUp(id: String) {
+        selectedId = id
+        prefs.edit { putString("selected", id) }
+        rebuildBackdrop()?.join()
     }
 
     /**
@@ -252,6 +327,8 @@ object Wallpapers {
         ROTATE_PHOTOS -> items.filter { it.kind == WallpaperKind.Photo }.sortedBy { it.id }.let { photos ->
             if (photos.isEmpty()) resolve(LATEST_DAILY) else photos[Math.floorMod(today(), photos.size)]
         }
+        // The shuffle card has no picture of its own: the newest photograph kept stands for it.
+        PAPER_RANDOM -> items.firstOrNull { it.kind == WallpaperKind.Paper }
         // Inputs are listed after Home starts; until then the input is taken on trust.
         else -> items.firstOrNull { it.id == id }
             ?: if (isSource(id)) Wallpaper(id, WallpaperKind.Source, id.substringAfterLast('/')) else null
@@ -273,13 +350,15 @@ object Wallpapers {
     private fun fileFor(w: Wallpaper): File? = when (w.kind) {
         WallpaperKind.Daily -> File(dailyDir, w.id.removePrefix("daily:") + ".jpg")
         WallpaperKind.Photo -> File(photoDir, w.id.removePrefix("photo:") + ".jpg")
+        WallpaperKind.Paper -> Papers.file(w.id.removePrefix(PAPER_PREFIX))
         else -> null
     }
 
     /** Full picture at [w]×[h] without shading, for the photo screensaver. Call off the main thread. */
     fun picture(wp: Wallpaper, w: Int, h: Int): Bitmap? = when (wp.kind) {
         WallpaperKind.Builtin -> Gradients.byKey(wp.id.removePrefix("grad:"))?.let { Gradients.render(it, w, h) }
-        WallpaperKind.Daily, WallpaperKind.Photo -> fileFor(wp)?.takeIf { it.exists() }?.let { Images.decodeCover(it, w, h) }
+        WallpaperKind.Daily, WallpaperKind.Photo, WallpaperKind.Paper ->
+            fileFor(wp)?.takeIf { it.exists() }?.let { Images.decodeCover(it, w, h) }
         WallpaperKind.Auto -> null
         // Until a film has stopped on a frame, the first built-in stands in.
         WallpaperKind.Live -> liveFrame.takeIf { it.exists() }?.let { Images.decodeCover(it, w, h) }
@@ -305,13 +384,13 @@ object Wallpapers {
     /** A 16:9 thumbnail for pickers and the phone page. Call off the main thread. */
     fun thumbnail(id: String): Bitmap? {
         synchronized(thumbs) { thumbs[id] }?.let { return it }
-        val wp = (if (id == LATEST_DAILY || id == ROTATE_PHOTOS) resolve(id) else items.firstOrNull { it.id == id }) ?: return null
+        val wp = (if (id == LATEST_DAILY || id == ROTATE_PHOTOS || id == PAPER_RANDOM) resolve(id) else items.firstOrNull { it.id == id }) ?: return null
         val b = if (wp.kind == WallpaperKind.Auto) Gradients.render(Gradients.autoThumb, 384, 216) else picture(wp, 384, 216)
         if (b != null) synchronized(thumbs) { thumbs[id] = b }
         return b
     }
 
-    private fun rebuildBackdrop() {
+    private fun rebuildBackdrop(): Job? {
         backdropJob?.cancel()
         val id = selectedId
         backdropJob = scope.launch {
@@ -337,6 +416,7 @@ object Wallpapers {
             frosted = frost?.asImageBitmap()
             if (key != null && bmp != null && frost != null) saveBaked(key, bmp, frost)
         }
+        return backdropJob
     }
 
     // ---- the baked backdrop, kept for the next start ----
@@ -352,7 +432,7 @@ object Wallpapers {
     /** Changes with the picture behind [wp], the screen size, and Aerial's version (the baking may change). */
     private fun bakedKey(wp: Wallpaper): String {
         val stamp = when (wp.kind) {
-            WallpaperKind.Daily, WallpaperKind.Photo -> fileFor(wp)?.lastModified() ?: 0L
+            WallpaperKind.Daily, WallpaperKind.Photo, WallpaperKind.Paper -> fileFor(wp)?.lastModified() ?: 0L
             WallpaperKind.Live -> liveFrame.lastModified()
             WallpaperKind.Video -> if (videoFrameIsOf(wp.id)) videoFrame.lastModified() else 0L
             else -> 0L
@@ -599,6 +679,7 @@ object Wallpapers {
 
     private fun rebuildList() {
         val daily = readDailyIndex().map { Wallpaper("daily:${it.first}", WallpaperKind.Daily, it.second, it.third) }
+        val papers = Papers.all().map { Wallpaper(PAPER_PREFIX + it.id, WallpaperKind.Paper, it.title.ifBlank { "Pap.er" }, it.caption) }
         val zh = Locale.getDefault().language == "zh"
         val builtins = Gradients.presets.map { Wallpaper("grad:${it.key}", WallpaperKind.Builtin, if (zh) it.nameZh else it.nameEn) }
         val photos = (photoDir.listFiles { f -> f.extension == "jpg" } ?: emptyArray())
@@ -612,7 +693,7 @@ object Wallpapers {
             listOf(Wallpaper(VIDEOS, WallpaperKind.Video, if (zh) "我的视频 · 轮播" else "My Videos, In Turn")) +
                 films.map { Wallpaper(VIDEO_PREFIX + it.id, WallpaperKind.Video, it.name.substringBeforeLast('.').ifBlank { it.name }) }
         val inputs = sources.map { (id, name) -> Wallpaper(SOURCE_PREFIX + id, WallpaperKind.Source, name) }
-        items = listOf(live) + videos + daily + builtins + photos + auto + inputs
+        items = listOf(live) + videos + papers + daily + builtins + photos + auto + inputs
     }
 
     // ---- daily photos ----
